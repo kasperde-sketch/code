@@ -234,8 +234,9 @@
       note.textContent = 'Bitte Name und Telefon oder E-Mail angeben.';
       return;
     }
-    var lines = ['Name: ' + f.name.value, 'Kontakt: ' + f.kontakt.value, 'Wunschtermin: ' + f.termin.value];
-    if (mode === 'baby') lines.push('Kinder: ' + f.kinder.value);
+    var lines = ['Name: ' + f.name.value, 'Kontakt: ' + f.kontakt.value];
+    if (f.termin.value.trim()) lines.push('Wunschtermin: ' + f.termin.value);
+    if (mode === 'baby') { if (f.kinder.value.trim()) lines.push('Kinder: ' + f.kinder.value); }
     else lines.push('Art der Hilfe: ' + f.art.value, 'Adresse: ' + f.ort.value);
     lines.push('', f.nachricht.value);
     var subject = mode === 'baby' ? 'Babysitting-Anfrage' : 'Anfrage Extra-Hilfe (Garten & Einkäufe)';
