@@ -23,6 +23,39 @@
   function clean(s, max) {
     return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, max);
   }
+  var RATIOS = { '4/5': 'Hochformat 4:5', '1/1': 'Quadrat 1:1', '4/3': 'Querformat 4:3', '16/9': 'Breit 16:9', '3/4': 'Plakat 3:4' };
+  var FITS = { cover: 'Bild füllt Feld', contain: 'Ganzes Bild zeigen' };
+
+  function defaultRatio(slot) { return slot.classList.contains('slot-hero') ? '4/5' : slot.classList.contains('poster') ? '3/4' : '4/3'; }
+  function defaultFit(slot) { return slot.classList.contains('poster') ? 'contain' : 'cover'; }
+
+  function applyFormat(slot, r, f) {
+    if (r && RATIOS[r]) { slot.dataset.ratio = r; slot.style.aspectRatio = r; }
+    if (f && FITS[f]) { slot.dataset.fit = f; slot.querySelector('img').style.objectFit = f; }
+    syncFormatControls(slot);
+  }
+  function syncFormatControls(slot) {
+    var sr = slot.querySelector('.fmt-ratio'), sf = slot.querySelector('.fmt-fit');
+    if (sr) sr.value = slot.dataset.ratio || defaultRatio(slot);
+    if (sf) sf.value = slot.dataset.fit || defaultFit(slot);
+  }
+  function addFormatControls(slot) {
+    if (slot.querySelector('.fmt')) return;
+    var box = document.createElement('div');
+    box.className = 'fmt';
+    [['fmt-ratio', RATIOS, 'Bildformat'], ['fmt-fit', FITS, 'Darstellung']].forEach(function (d) {
+      var sel = document.createElement('select');
+      sel.className = d[0];
+      sel.setAttribute('aria-label', d[2]);
+      Object.keys(d[1]).forEach(function (k) {
+        var o = document.createElement('option'); o.value = k; o.textContent = d[1][k]; sel.appendChild(o);
+      });
+      box.appendChild(sel);
+    });
+    slot.appendChild(box);
+    syncFormatControls(slot);
+  }
+
   function isSafeImage(v) {
     return typeof v === 'string' && v.length < 4000000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(v);
   }
@@ -40,7 +73,10 @@
       '<div class="block-body"><h4 data-b="title"></h4><p data-b="text"></p></div>';
     el.querySelector('[data-b="title"]').textContent = data.title || 'Neue Überschrift';
     el.querySelector('[data-b="text"]').textContent = data.text || 'Kurzer Freitext …';
-    if (data.img) setSlotImage(el.querySelector('.slot'), data.img);
+    var bs = el.querySelector('.slot');
+    if (data.img) setSlotImage(bs, data.img);
+    addFormatControls(bs);
+    applyFormat(bs, data.r, data.f);
     if (body.classList.contains('editing')) setEditable(el, true);
     blocksEl.appendChild(el);
     return el;
@@ -89,6 +125,7 @@
 
   /* ---------- Initial image state ---------- */
   document.querySelectorAll('.slot[data-img]').forEach(function (slot) {
+    addFormatControls(slot);
     var img = slot.querySelector('img');
     img.addEventListener('error', function () { img.removeAttribute('src'); markEmpty(slot); });
     if (!img.complete || !img.naturalWidth) { if (img.complete) markEmpty(slot); }
@@ -113,8 +150,14 @@
       var v = images[s.getAttribute('data-img')];
       if (isSafeImage(v)) setSlotImage(s, v);
     });
+    var formats = state.formats && typeof state.formats === 'object' ? state.formats : {};
+    Array.prototype.forEach.call(document.querySelectorAll('.slot[data-img]'), function (s) {
+      var fm = formats[s.getAttribute('data-img')];
+      if (fm && typeof fm === 'object') applyFormat(s, fm.r, fm.f);
+    });
     blocks.forEach(function (b) {
       if (b && typeof b === 'object') createBlock({
+        r: typeof b.r === 'string' ? b.r : '', f: typeof b.f === 'string' ? b.f : '',
         title: typeof b.title === 'string' ? clean(b.title, 200) : '',
         text: typeof b.text === 'string' ? clean(b.text, 2000) : '',
         img: isSafeImage(b.img) ? b.img : ''
@@ -123,19 +166,21 @@
   }
 
   function save() {
-    var state = { texts: {}, images: {}, blocks: [] };
+    var state = { texts: {}, images: {}, formats: {}, blocks: [] };
     document.querySelectorAll('[data-k]').forEach(function (n) {
       state.texts[n.getAttribute('data-k')] = clean(n.innerText, 2000);
     });
     document.querySelectorAll('.slot[data-img]').forEach(function (s) {
       if (s.dataset.custom) state.images[s.dataset.img] = s.querySelector('img').src;
+      if (s.dataset.ratio || s.dataset.fit) state.formats[s.dataset.img] = { r: s.dataset.ratio || '', f: s.dataset.fit || '' };
     });
     blocksEl.querySelectorAll('.block').forEach(function (b) {
       var s = b.querySelector('.slot');
       state.blocks.push({
         title: clean(b.querySelector('[data-b="title"]').innerText, 200),
         text: clean(b.querySelector('[data-b="text"]').innerText, 2000),
-        img: s.dataset.custom ? s.querySelector('img').src : ''
+        img: s.dataset.custom ? s.querySelector('img').src : '',
+        r: s.dataset.ratio || '', f: s.dataset.fit || ''
       });
     });
     try {
@@ -249,6 +294,11 @@
 
   /* ---------- Delegated events ---------- */
   document.addEventListener('change', function (e) {
+    if (e.target.matches('.fmt select')) {
+      var sl = e.target.closest('.slot');
+      applyFormat(sl, sl.querySelector('.fmt-ratio').value, sl.querySelector('.fmt-fit').value);
+      return;
+    }
     var input = e.target;
     if (!input.matches('.slot input[type="file"]') || !input.files[0]) return;
     var slot = input.closest('.slot');
