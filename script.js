@@ -128,6 +128,69 @@
     setTimeout(function () { s.textContent = old; }, 1800);
   }
 
+  /* ---------- Login (Hauptbenutzer) ---------- */
+  var PW_HASH = '8dc1f63a277f49186f3b5c4fbca6f880f9c526bb4b2d14f7cd02353b88ceab7a';
+
+  function sha256(str) {
+    var K = [], H = [], i, j, p = 2;
+    function frac(x) { return ((x - Math.floor(x)) * 4294967296) | 0; }
+    for (i = 0; K.length < 64; p++) {
+      for (j = 2; j * j <= p; j++) if (p % j === 0) break;
+      if (j * j > p) { if (H.length < 8) H.push(frac(Math.pow(p, 0.5))); K.push(frac(Math.pow(p, 1 / 3))); }
+    }
+    var bytes = unescape(encodeURIComponent(str)).split('').map(function (c) { return c.charCodeAt(0); });
+    var bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    for (i = 7; i >= 0; i--) bytes.push(i > 3 ? 0 : (bitLen >>> (i * 8)) & 255);
+    function rr(x, n) { return (x >>> n) | (x << (32 - n)); }
+    for (var o = 0; o < bytes.length; o += 64) {
+      var w = [];
+      for (i = 0; i < 64; i++) {
+        if (i < 16) w[i] = (bytes[o + i * 4] << 24) | (bytes[o + i * 4 + 1] << 16) | (bytes[o + i * 4 + 2] << 8) | bytes[o + i * 4 + 3];
+        else {
+          var s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+          var s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+          w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+        }
+      }
+      var a = H.slice();
+      for (i = 0; i < 64; i++) {
+        var S1 = rr(a[4], 6) ^ rr(a[4], 11) ^ rr(a[4], 25);
+        var ch = (a[4] & a[5]) ^ (~a[4] & a[6]);
+        var t1 = (a[7] + S1 + ch + K[i] + w[i]) | 0;
+        var S0 = rr(a[0], 2) ^ rr(a[0], 13) ^ rr(a[0], 22);
+        var maj = (a[0] & a[1]) ^ (a[0] & a[2]) ^ (a[1] & a[2]);
+        var t2 = (S0 + maj) | 0;
+        a = [(t1 + t2) | 0, a[0], a[1], a[2], (a[3] + t1) | 0, a[4], a[5], a[6]];
+      }
+      for (i = 0; i < 8; i++) H[i] = (H[i] + a[i]) | 0;
+    }
+    return H.map(function (x) { return ('00000000' + (x >>> 0).toString(16)).slice(-8); }).join('');
+  }
+
+  var loginEl = document.getElementById('login');
+  var pwInput = document.getElementById('pw');
+  var loginNote = document.getElementById('loginNote');
+
+  function syncEditLink() {
+    editToggle.hidden = !(location.hash === '#edit' || body.classList.contains('editing'));
+  }
+  window.addEventListener('hashchange', syncEditLink);
+  syncEditLink();
+
+  document.getElementById('loginCancel').addEventListener('click', function () { loginEl.hidden = true; });
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (sha256(pwInput.value) === PW_HASH) {
+      loginEl.hidden = true; pwInput.value = ''; loginNote.textContent = '';
+      enterEdit();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      loginNote.textContent = 'Falsches Passwort.';
+    }
+  });
+
   /* ---------- Edit mode ---------- */
   function enterEdit() {
     body.classList.add('editing');
@@ -144,8 +207,8 @@
   }
 
   editToggle.addEventListener('click', function () {
-    body.classList.contains('editing') ? exitEdit() : enterEdit();
-    if (body.classList.contains('editing')) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (body.classList.contains('editing')) { exitEdit(); return; }
+    loginEl.hidden = false; pwInput.focus();
   });
   document.getElementById('exitBtn').addEventListener('click', exitEdit);
   document.getElementById('saveBtn').addEventListener('click', save);

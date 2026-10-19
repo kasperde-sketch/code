@@ -171,7 +171,7 @@
 <footer class="footer">
   <div class="wrap footer-inner">
     <span data-k="foot">© Kasper · Babysitter in Fleckeby</span>
-    <button type="button" id="editToggle" class="edit-link">Bearbeiten / Live-Edit</button>
+    <button type="button" id="editToggle" class="edit-link" hidden>Bearbeiten / Live-Edit</button>
   </div>
 </footer>
 
@@ -185,6 +185,15 @@
 <div class="sent" id="sent" hidden>
   <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="sent-c" cx="26" cy="26" r="24"/><path class="sent-t" d="M14 27l8 8 16-17"/></svg>
   <p>Gesendet</p>
+</div>
+
+<div class="login" id="login" hidden>
+  <form id="loginForm" autocomplete="off">
+    <label for="pw">Passwort</label>
+    <input type="password" id="pw" autocomplete="current-password">
+    <p class="note" id="loginNote"></p>
+    <div class="login-actions"><button type="submit" class="btn solid">Anmelden</button><button type="button" class="btn" id="loginCancel">Abbrechen</button></div>
+  </form>
 </div>
 
 <div class="lightbox" id="lightbox" hidden>
