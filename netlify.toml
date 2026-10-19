@@ -1,0 +1,3 @@
+# Statische Seite: kein Build-Schritt, ausgeliefert wird der Ordner "public".
+[build]
+  publish = "public"
