@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kasper – Babysitter in Fleckeby & Umgebung</title>
   <meta name="description" content="Kasper (16), Waldorfschüler aus Fleckeby, passt verantwortungsvoll auf Kinder von 0 bis 12 Jahren auf – abends und am Wochenende.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src https://formsubmit.co; form-action 'none'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="no-referrer">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -143,7 +142,7 @@
           <span class="small-label" data-k="c-mail-l">E-Mail</span>
           <p><a href="mailto:kasper310810@gmail.com">kasper310810@gmail.com</a></p>
           <span class="small-label" data-k="c-wa-l">WhatsApp</span>
-          <p><a href="https://wa.me/4915159410998" target="_blank" rel="noopener">Direkt schreiben →</a></p>
+          <p><a href="https://wa.me/4915159410998" target="_blank" rel="noopener noreferrer">Direkt schreiben →</a></p>
         </div>
 
         <div class="contact-form">
@@ -152,13 +151,15 @@
             <button type="button" class="tab" role="tab" data-mode="help" aria-selected="false">Extra-Hilfe (Garten &amp; Einkäufe)</button>
           </div>
           <form id="form" novalidate>
-            <label>Name<input name="name" required autocomplete="name"></label>
-            <label>Telefon oder E-Mail<input name="kontakt" required autocomplete="email"></label>
-            <label>Wunschtermin (optional)<input name="termin" placeholder="z. B. Samstag, 19:00 Uhr"></label>
-            <label data-mode="baby">Anzahl &amp; Alter der Kinder (optional)<input name="kinder" placeholder="z. B. 2 Kinder, 3 und 6 Jahre"></label>
+            <label>Name<input name="name" required maxlength="100" autocomplete="name"></label>
+            <label>Telefon oder E-Mail<input name="kontakt" required maxlength="120" autocomplete="off"></label>
+            <label>Wunschtermin (optional)<input name="termin" maxlength="120" placeholder="z. B. Samstag, 19:00 Uhr"></label>
+            <label data-mode="baby">Anzahl &amp; Alter der Kinder (optional)<input name="kinder" maxlength="120" placeholder="z. B. 2 Kinder, 3 und 6 Jahre"></label>
             <label data-mode="help" hidden>Art der Hilfe<select name="art"><option>Gartenarbeit</option><option>Einkäufe</option><option>Beides</option></select></label>
-            <label data-mode="help" hidden>Adresse in Fleckeby / Umgebung<input name="ort"></label>
-            <label>Nachricht<textarea name="nachricht" rows="4"></textarea></label>
+            <label data-mode="help" hidden>Adresse in Fleckeby / Umgebung (optional)<input name="ort" maxlength="150"></label>
+            <label>Nachricht<textarea name="nachricht" rows="4" maxlength="1500"></textarea></label>
+            <div class="hp" aria-hidden="true"><label>Nicht ausfüllen<input name="_honey" tabindex="-1" autocomplete="off"></label></div>
+            <label class="consent"><input type="checkbox" name="datenschutz" required> <span>Ich habe die <a href="datenschutz.html">Datenschutzerklärung</a> gelesen und bin mit der Verarbeitung meiner Angaben zur Beantwortung meiner Anfrage einverstanden.</span></label>
             <button type="submit" class="btn solid" id="submitBtn">Anfrage senden</button>
             <p class="note" id="formNote"></p>
           </form>
@@ -170,7 +171,7 @@
 
 <footer class="footer">
   <div class="wrap footer-inner">
-    <span data-k="foot">© Kasper · Babysitter in Fleckeby</span>
+    <span><span data-k="foot">© Kasper · Babysitter in Fleckeby</span> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></span>
     <button type="button" id="editToggle" class="edit-link" hidden>Bearbeiten / Live-Edit</button>
   </div>
 </footer>

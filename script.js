@@ -15,6 +15,18 @@
   ];
 
   /* ---------- Helpers ---------- */
+  var MAX_BLOCKS = 30;
+  var MAX_UPLOAD = 15 * 1024 * 1024;
+  var ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+  // Steuerzeichen entfernen, Länge begrenzen
+  function clean(s, max) {
+    return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').slice(0, max);
+  }
+  function isSafeImage(v) {
+    return typeof v === 'string' && v.length < 4000000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(v);
+  }
+
   function slotHTML() {
     return '<figure class="slot empty"><img alt=""><span class="ph">Bild</span>' +
       '<label class="overlay"><span>Bild wählen</span><input type="file" accept="image/*" hidden></label></figure>';
@@ -68,8 +80,10 @@
         c.getContext('2d').drawImage(im, 0, 0, w, h);
         cb(c.toDataURL('image/jpeg', 0.82));
       };
+      im.onerror = function () { cb(null); };
       im.src = reader.result;
     };
+    reader.onerror = function () { cb(null); };
     reader.readAsDataURL(file);
   }
 
@@ -84,23 +98,34 @@
   function load() {
     var state = null;
     try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) {}
-    if (!state) { DEFAULT_BLOCKS.forEach(createBlock); return; }
+    if (!state || typeof state !== 'object') { DEFAULT_BLOCKS.forEach(createBlock); return; }
 
-    Object.keys(state.texts || {}).forEach(function (k) {
-      var n = document.querySelector('[data-k="' + k + '"]');
-      if (n) n.innerHTML = state.texts[k];
+    var texts = state.texts && typeof state.texts === 'object' ? state.texts : {};
+    var images = state.images && typeof state.images === 'object' ? state.images : {};
+    var blocks = Array.isArray(state.blocks) ? state.blocks.slice(0, MAX_BLOCKS) : [];
+
+    // gespeicherte Daten gelten als nicht vertrauenswürdig: nur Text, nur geprüfte Bild-URLs
+    Array.prototype.forEach.call(document.querySelectorAll('[data-k]'), function (n) {
+      var k = n.getAttribute('data-k');
+      if (typeof texts[k] === 'string') n.textContent = clean(texts[k], 2000);
     });
-    Object.keys(state.images || {}).forEach(function (k) {
-      var s = document.querySelector('.slot[data-img="' + k + '"]');
-      if (s) setSlotImage(s, state.images[k]);
+    Array.prototype.forEach.call(document.querySelectorAll('.slot[data-img]'), function (s) {
+      var v = images[s.getAttribute('data-img')];
+      if (isSafeImage(v)) setSlotImage(s, v);
     });
-    (state.blocks || []).forEach(createBlock);
+    blocks.forEach(function (b) {
+      if (b && typeof b === 'object') createBlock({
+        title: typeof b.title === 'string' ? clean(b.title, 200) : '',
+        text: typeof b.text === 'string' ? clean(b.text, 2000) : '',
+        img: isSafeImage(b.img) ? b.img : ''
+      });
+    });
   }
 
   function save() {
     var state = { texts: {}, images: {}, blocks: [] };
     document.querySelectorAll('[data-k]').forEach(function (n) {
-      state.texts[n.getAttribute('data-k')] = n.innerHTML;
+      state.texts[n.getAttribute('data-k')] = clean(n.innerText, 2000);
     });
     document.querySelectorAll('.slot[data-img]').forEach(function (s) {
       if (s.dataset.custom) state.images[s.dataset.img] = s.querySelector('img').src;
@@ -108,8 +133,8 @@
     blocksEl.querySelectorAll('.block').forEach(function (b) {
       var s = b.querySelector('.slot');
       state.blocks.push({
-        title: b.querySelector('[data-b="title"]').textContent,
-        text: b.querySelector('[data-b="text"]').textContent,
+        title: clean(b.querySelector('[data-b="title"]').innerText, 200),
+        text: clean(b.querySelector('[data-b="text"]').innerText, 2000),
         img: s.dataset.custom ? s.querySelector('img').src : ''
       });
     });
@@ -129,44 +154,34 @@
   }
 
   /* ---------- Login (Hauptbenutzer) ---------- */
-  var PW_HASH = '8dc1f63a277f49186f3b5c4fbca6f880f9c526bb4b2d14f7cd02353b88ceab7a';
+  // Nur Passwort-Hash (PBKDF2-SHA256, Salt, 310.000 Iterationen) – kein Klartext.
+  // Hinweis: reiner Client-Schutz der Bearbeitungsansicht; Änderungen bleiben ohnehin lokal im Browser.
+  var PW_SALT = '41e4035111f2ab32475adc2d932a5c4f';
+  var PW_HASH = '711a145df90a7561b72431e80e05ccb4ebed1ca700ba159ce23e98d33b0e51c9';
+  var PW_ITER = 310000;
+  var failCount = 0, lockedUntil = 0;
 
-  function sha256(str) {
-    var K = [], H = [], i, j, p = 2;
-    function frac(x) { return ((x - Math.floor(x)) * 4294967296) | 0; }
-    for (i = 0; K.length < 64; p++) {
-      for (j = 2; j * j <= p; j++) if (p % j === 0) break;
-      if (j * j > p) { if (H.length < 8) H.push(frac(Math.pow(p, 0.5))); K.push(frac(Math.pow(p, 1 / 3))); }
-    }
-    var bytes = unescape(encodeURIComponent(str)).split('').map(function (c) { return c.charCodeAt(0); });
-    var bitLen = bytes.length * 8;
-    bytes.push(0x80);
-    while (bytes.length % 64 !== 56) bytes.push(0);
-    for (i = 7; i >= 0; i--) bytes.push(i > 3 ? 0 : (bitLen >>> (i * 8)) & 255);
-    function rr(x, n) { return (x >>> n) | (x << (32 - n)); }
-    for (var o = 0; o < bytes.length; o += 64) {
-      var w = [];
-      for (i = 0; i < 64; i++) {
-        if (i < 16) w[i] = (bytes[o + i * 4] << 24) | (bytes[o + i * 4 + 1] << 16) | (bytes[o + i * 4 + 2] << 8) | bytes[o + i * 4 + 3];
-        else {
-          var s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
-          var s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
-          w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
-        }
-      }
-      var a = H.slice();
-      for (i = 0; i < 64; i++) {
-        var S1 = rr(a[4], 6) ^ rr(a[4], 11) ^ rr(a[4], 25);
-        var ch = (a[4] & a[5]) ^ (~a[4] & a[6]);
-        var t1 = (a[7] + S1 + ch + K[i] + w[i]) | 0;
-        var S0 = rr(a[0], 2) ^ rr(a[0], 13) ^ rr(a[0], 22);
-        var maj = (a[0] & a[1]) ^ (a[0] & a[2]) ^ (a[1] & a[2]);
-        var t2 = (S0 + maj) | 0;
-        a = [(t1 + t2) | 0, a[0], a[1], a[2], (a[3] + t1) | 0, a[4], a[5], a[6]];
-      }
-      for (i = 0; i < 8; i++) H[i] = (H[i] + a[i]) | 0;
-    }
-    return H.map(function (x) { return ('00000000' + (x >>> 0).toString(16)).slice(-8); }).join('');
+  function hexToBytes(hex) {
+    var out = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+  }
+  function bytesToHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+  function safeEqual(a, b) {
+    if (a.length !== b.length) return false;
+    var d = 0;
+    for (var i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return d === 0;
+  }
+  function checkPassword(pw) {
+    if (!(window.crypto && crypto.subtle)) return Promise.resolve(false);
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']).then(function (key) {
+      return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(PW_SALT), iterations: PW_ITER }, key, 256);
+    }).then(function (bits) { return safeEqual(bytesToHex(bits), PW_HASH); })
+      .catch(function () { return false; });
   }
 
   var loginEl = document.getElementById('login');
@@ -179,16 +194,23 @@
   window.addEventListener('hashchange', syncEditLink);
   syncEditLink();
 
-  document.getElementById('loginCancel').addEventListener('click', function () { loginEl.hidden = true; });
+  document.getElementById('loginCancel').addEventListener('click', function () { loginEl.hidden = true; pwInput.value = ''; });
   document.getElementById('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (sha256(pwInput.value) === PW_HASH) {
-      loginEl.hidden = true; pwInput.value = ''; loginNote.textContent = '';
-      enterEdit();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      loginNote.textContent = 'Falsches Passwort.';
-    }
+    var wait = lockedUntil - Date.now();
+    if (wait > 0) { loginNote.textContent = 'Bitte ' + Math.ceil(wait / 1000) + ' s warten.'; return; }
+    checkPassword(pwInput.value).then(function (ok) {
+      pwInput.value = '';
+      if (ok) {
+        failCount = 0; loginNote.textContent = ''; loginEl.hidden = true;
+        enterEdit();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        failCount++;
+        lockedUntil = Date.now() + Math.min(Math.pow(2, failCount) * 500, 60000);
+        loginNote.textContent = 'Anmeldung fehlgeschlagen.';
+      }
+    });
   });
 
   /* ---------- Edit mode ---------- */
@@ -220,6 +242,7 @@
   });
 
   document.getElementById('addBlock').addEventListener('click', function () {
+    if (blocksEl.children.length >= MAX_BLOCKS) { flash('Maximal ' + MAX_BLOCKS + ' Blöcke.'); return; }
     var b = createBlock({ title: 'Neue Überschrift', text: 'Kurzer Freitext …', img: '' });
     b.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
@@ -229,8 +252,13 @@
     var input = e.target;
     if (!input.matches('.slot input[type="file"]') || !input.files[0]) return;
     var slot = input.closest('.slot');
-    resizeImage(input.files[0], function (data) { setSlotImage(slot, data); });
+    var file = input.files[0];
     input.value = '';
+    if (ALLOWED_TYPES.indexOf(file.type) === -1 || file.size > MAX_UPLOAD) {
+      flash('Nur JPG, PNG oder WebP bis 15 MB erlaubt.');
+      return;
+    }
+    resizeImage(file, function (data) { if (data) setSlotImage(slot, data); });
   });
 
   document.addEventListener('click', function (e) {
@@ -290,33 +318,68 @@
     });
   });
 
+  var lastSent = 0;
+
+  function showError(msg, withWhatsApp) {
+    note.textContent = msg;
+    if (withWhatsApp) {
+      var a = document.createElement('a');
+      a.href = 'https://wa.me/4915159410998';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = 'WhatsApp';
+      note.appendChild(document.createTextNode(' Alternativ per '));
+      note.appendChild(a);
+      note.appendChild(document.createTextNode(' oder Telefon melden.'));
+    }
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var f = form.elements;
-    if (!f.name.value.trim() || !f.kontakt.value.trim()) {
-      note.textContent = 'Bitte Name und Telefon oder E-Mail angeben.';
-      return;
-    }
-    var lines = ['Name: ' + f.name.value, 'Kontakt: ' + f.kontakt.value];
-    if (f.termin.value.trim()) lines.push('Wunschtermin: ' + f.termin.value);
-    if (mode === 'baby') { if (f.kinder.value.trim()) lines.push('Kinder: ' + f.kinder.value); }
-    else lines.push('Art der Hilfe: ' + f.art.value, 'Adresse: ' + f.ort.value);
-    lines.push('', f.nachricht.value);
+    var name = clean(f.name.value, 100).replace(/[\r\n]+/g, ' ').trim();
+    var kontakt = clean(f.kontakt.value, 120).replace(/[\r\n]+/g, ' ').trim();
+    var termin = clean(f.termin.value, 120).replace(/[\r\n]+/g, ' ').trim();
+    var kinder = clean(f.kinder.value, 120).replace(/[\r\n]+/g, ' ').trim();
+    var ort = clean(f.ort.value, 150).replace(/[\r\n]+/g, ' ').trim();
+    var art = ['Gartenarbeit', 'Einkäufe', 'Beides'].indexOf(f.art.value) > -1 ? f.art.value : 'Gartenarbeit';
+    var nachricht = clean(f.nachricht.value, 1500).trim();
+
+    if (!name || !kontakt) { showError('Bitte Name und Telefon oder E-Mail angeben.'); return; }
+    var isMail = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]{2,}$/.test(kontakt);
+    var isTel = /^\+?[0-9][0-9 \/()\-]{5,}$/.test(kontakt);
+    if (!isMail && !isTel) { showError('Bitte eine gültige Telefonnummer oder E-Mail-Adresse angeben.'); return; }
+    if (!f.datenschutz.checked) { showError('Bitte der Datenschutzerklärung zustimmen.'); return; }
+
+    // Honeypot: Bots füllen das versteckte Feld, Menschen nicht
+    if (f._honey.value) { form.reset(); showSent(); return; }
+    // einfache Sendesperre gegen Mehrfach-Absenden
+    if (Date.now() - lastSent < 15000) { showError('Bitte einen Moment warten, bevor du erneut sendest.'); return; }
+
+    var lines = ['Name: ' + name, 'Kontakt: ' + kontakt];
+    if (termin) lines.push('Wunschtermin: ' + termin);
+    if (mode === 'baby') { if (kinder) lines.push('Kinder: ' + kinder); }
+    else { lines.push('Art der Hilfe: ' + art); if (ort) lines.push('Adresse: ' + ort); }
+    lines.push('', nachricht);
     var subject = mode === 'baby' ? 'Babysitting-Anfrage' : 'Anfrage Extra-Hilfe (Garten & Einkäufe)';
+
     var btn = document.getElementById('submitBtn');
     btn.disabled = true;
     note.textContent = 'Wird gesendet …';
     fetch('https://formsubmit.co/ajax/kasper310810@gmail.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ _subject: subject, _template: 'table', message: lines.join('\n') })
+      referrerPolicy: 'no-referrer',
+      credentials: 'omit',
+      body: JSON.stringify({ _subject: subject, _template: 'table', _honey: '', message: lines.join('\n') })
     }).then(function (r) {
       if (!r.ok) throw new Error('send failed');
+      lastSent = Date.now();
       form.reset();
       note.textContent = '';
       showSent();
     }).catch(function () {
-      note.innerHTML = 'Senden fehlgeschlagen. Bitte per <a href="https://wa.me/4915159410998" target="_blank" rel="noopener">WhatsApp</a> oder Telefon melden.';
+      showError('Senden fehlgeschlagen. Bitte später erneut versuchen.', true);
     }).then(function () { btn.disabled = false; });
   });
 

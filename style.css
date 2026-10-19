@@ -6,7 +6,7 @@
   --muted: #6b7075;
   --line: #e9ecef;
   --gutter: 20px;
-  --font: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font: "Helvetica Neue", Helvetica, Arial, "Segoe UI", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -178,3 +178,17 @@ input:focus, textarea:focus, select:focus { border-bottom-width: 2px; padding-bo
 .login label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .login-actions { display: flex; gap: 8px; margin-top: 18px; }
 .edit-link[hidden] { display: none; }
+
+/* PRIVACY / SECURITY */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+form label.consent { display: flex; gap: 10px; align-items: flex-start; text-transform: none; letter-spacing: 0; font-size: .85rem; color: var(--ink); line-height: 1.4; }
+form label.consent input { width: auto; margin: 3px 0 0; flex: none; }
+form label.consent a, .footer a { text-decoration: underline; }
+.legal { max-width: 760px; padding-top: 48px; padding-bottom: 80px; }
+.legal h1 { font-size: clamp(2rem, 7vw, 3.5rem); font-weight: 800; letter-spacing: -.03em; margin-bottom: 32px; }
+.legal h2 { font-size: 1.2rem; font-weight: 800; margin: 32px 0 8px; }
+.legal p, .legal li { color: #3a3d40; margin-bottom: 10px; }
+.legal ul { padding-left: 20px; }
+.legal .todo { background: var(--bg-card); padding: 2px 6px; }
+.legal a { text-decoration: underline; }
+[data-k], [data-b] { white-space: pre-line; }
