@@ -159,3 +159,14 @@ input:focus, textarea:focus, select:focus { border-bottom-width: 2px; padding-bo
   .poster { flex-basis: 24%; }
   .contact-grid { grid-template-columns: 1fr 1.4fr; gap: 96px; }
 }
+
+/* SENT OVERLAY */
+.sent { position: fixed; inset: 0; z-index: 120; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+.sent[hidden] { display: none; }
+.sent svg { width: 96px; height: 96px; fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.sent-c { stroke-dasharray: 151; stroke-dashoffset: 151; animation: draw .6s ease forwards; }
+.sent-t { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .4s ease .5s forwards; }
+.sent p { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; opacity: 0; animation: fade .4s ease .8s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { to { opacity: 1; } }
+.note a { text-decoration: underline; }

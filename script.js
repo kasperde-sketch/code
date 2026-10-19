@@ -240,10 +240,33 @@
     else lines.push('Art der Hilfe: ' + f.art.value, 'Adresse: ' + f.ort.value);
     lines.push('', f.nachricht.value);
     var subject = mode === 'baby' ? 'Babysitting-Anfrage' : 'Anfrage Extra-Hilfe (Garten & Einkäufe)';
-    window.location.href = 'mailto:kasper310810@gmail.com?subject=' + encodeURIComponent(subject) +
-      '&body=' + encodeURIComponent(lines.join('\n'));
-    note.textContent = 'Dein E-Mail-Programm öffnet sich mit der vorbereiteten Anfrage.';
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    note.textContent = 'Wird gesendet …';
+    fetch('https://formsubmit.co/ajax/kasper310810@gmail.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ _subject: subject, _template: 'table', message: lines.join('\n') })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('send failed');
+      form.reset();
+      note.textContent = '';
+      showSent();
+    }).catch(function () {
+      note.innerHTML = 'Senden fehlgeschlagen. Bitte per <a href="https://wa.me/4915159410998" target="_blank" rel="noopener">WhatsApp</a> oder Telefon melden.';
+    }).then(function () { btn.disabled = false; });
   });
+
+  function showSent() {
+    var el = document.getElementById('sent');
+    var parts = [el.querySelector('.sent-c'), el.querySelector('.sent-t'), el.querySelector('p')];
+    el.hidden = false;
+    parts.forEach(function (n) { n.style.animation = 'none'; void n.offsetWidth; n.style.animation = ''; });
+    setTimeout(function () {
+      el.hidden = true;
+      window.scrollTo(0, 0);
+    }, 2200);
+  }
 
   load();
 })();
