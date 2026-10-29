@@ -225,3 +225,30 @@ button.key.listening { background: #2563eb; color: #fff; border-color: #60a5fa; 
 .padk { color: #8e98aa; font-size: 13px; }
 .dark button.danger { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
 @keyframes pulse { 50% { opacity: 0.65; } }
+
+/* ---------- Urwald-Design für alle Menüs ---------- */
+#ui { background: rgba(8, 22, 14, 0.38); }
+.dark h1.logo { color: #f3f6ef; text-shadow: 0 3px 18px rgba(0, 0, 0, 0.45); }
+.dark h1.logo span { color: #8fd04f; }
+.dark .tag { color: #9fb2a2; }
+.dark button.primary { background: linear-gradient(180deg, #5cb83a, #2f7d22); color: #fff; }
+.dark button.primary:hover:not([disabled]) { background: linear-gradient(180deg, #6fcb48, #368f27); }
+.dark .mode { background: #1a2130; border: 1px solid #252e40; color: #e6e9ef; }
+.dark .mode.primary { border-color: transparent; }
+.dark .mode[disabled] { background: #161c28; color: #6b7588; }
+.dark .slot { background: #1a2130; border-color: #2e3850; color: #e6e9ef; }
+.dark .slot .key { color: #8e98aa; }
+.dark .emptyslot { color: #4b5568; }
+.dark .pick { background: #1a2130; color: #e6e9ef; }
+.dark .pick.on { box-shadow: inset 0 0 0 2px #8fd04f; }
+.dark .pick small { color: #8e98aa; }
+.dark .chip { background: #1a2130; color: #e6e9ef; }
+.dark .chip.on { background: #2f7d22; }
+.dark .sw.on { box-shadow: 0 0 0 3px #10141d, 0 0 0 6px #8fd04f; }
+.dark #preview { background: radial-gradient(circle at 60% 30%, #3c7a58, #12261b); }
+.dark .stepper span { color: #fff; }
+.dark .maps .seg button { background: #1a2130; }
+.dark .maps .seg button.on { background: #2f7d22; }
+.dark ul.stats li { border-bottom-color: #232b3c; }
+.dark .seg button.on, .dark .tabs button.on { background: #2f7d22; color: #fff; }
+.modal { background: rgba(4, 10, 6, 0.55); }

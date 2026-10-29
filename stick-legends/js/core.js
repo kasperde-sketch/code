@@ -39,8 +39,9 @@ window.SL = window.SL || {};
       h = Math.imul(h ^ (h >>> 13), 1274126177);
       return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
     },
-    rgb(hex) {
-      const n = parseInt(hex.slice(1), 16);
+    rgb(col) {
+      if (col[0] !== '#') return col.replace(/[^\d,]/g, '').split(',').slice(0, 3).map(Number);
+      const n = parseInt(col.slice(1), 16);
       return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     },
     shade(hex, f) {

@@ -925,7 +925,7 @@
       }
       if (this.species) {
         SL.drawCreature(ctx, this.skel.p, {
-          species: this.species, color: this.color, facing: this.facing, flash: this.flashT > 0, alpha,
+          species: this.species, color: this.color, facing: this.facing, flash: this.flashT > 0, alpha, seed: this.id,
           tailPts: this.tail, time: this.game.time, airborne: this.state === 'normal' && !this.grounded,
           weapon: showWeapon ? this.weapons[this.weaponIdx] : null, weaponAng: wAng,
           weaponOpt: { charge: this.charge / (this.weapon.maxCharge || 1), time: this.game.time },

@@ -55,11 +55,7 @@
         },
       });
       this.spawns = map.spawns ? map.spawns.map(([c, r]) => this.dropPoint(c, r)) : this.autoSpawns();
-      this.clouds = [];
-      for (let i = 0; i < 4; i++) this.clouds.push({ x: U.rand(-100, SL.W), y: U.rand(40, 300), s: U.rand(0.6, 1.4), v: U.rand(8, 22) });
-      this.bg = canvas(SL.W, SL.H);
       this.tileCanvas = canvas(SL.W, SL.H);
-      this.renderBg();
     }
 
     inB(c, r) { return c >= 0 && c < COLS && r >= 0 && r < ROWS; }
@@ -165,10 +161,6 @@
         this.checkAnchors();
       }
       this.updateChunks(dt, game);
-      for (const cl of this.clouds) {
-        cl.x += cl.v * dt;
-        if (cl.x > SL.W + 150) { cl.x = -200; cl.y = U.rand(40, 300); }
-      }
     }
 
     // Zerstörbare Teile ohne Verbindung zu festem Gelände fallen herunter
@@ -248,12 +240,6 @@
     }
 
     // ---------- Zeichnen ----------
-    renderBg() {
-      let seed = 0;
-      for (const ch of this.map.id) seed += ch.charCodeAt(0);
-      SL.Art.renderBg(this.bg.getContext('2d'), seed);
-    }
-
     renderTiles() {
       const ctx = this.tileCanvas.getContext('2d');
       ctx.clearRect(0, 0, SL.W, SL.H);
@@ -269,11 +255,6 @@
         }
       }
       this.dirty = false;
-    }
-
-    drawBack(ctx) {
-      ctx.drawImage(this.bg, 0, 0);
-      for (const cl of this.clouds) SL.Art.cloud(ctx, cl.x, cl.y, cl.s * 0.8);
     }
 
     drawTiles(ctx) {

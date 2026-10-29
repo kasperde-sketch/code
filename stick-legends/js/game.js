@@ -348,13 +348,13 @@
 
     // ---------- Zeichnen ----------
     draw(ctx) {
+      const cam = this.cam;
+      SL.Forest.drawBack(ctx, cam, this.time);
       ctx.save();
       if (this.fx.shake > 0) ctx.translate(U.rand(-1, 1) * this.fx.shake * 0.6, U.rand(-1, 1) * this.fx.shake * 0.6);
-      const cam = this.cam;
       ctx.translate(SL.W / 2, SL.H / 2);
       ctx.scale(cam.z, cam.z);
       ctx.translate(-cam.x, -cam.y);
-      this.world.drawBack(ctx);
       this.world.drawTiles(ctx);
       for (const e of this.entities) e.draw(ctx, this);
       const order = this.fighters.slice().sort((a, b) => (a.alive ? 1 : 0) - (b.alive ? 1 : 0) || (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
@@ -363,6 +363,8 @@
       this.fx.draw(ctx);
       for (const f of this.fighters) f.drawOverlay(ctx);
       ctx.restore();
+      SL.Forest.drawFront(ctx, cam, this.time, this.paused || this.over ? 0 : 1 / 60 * SL.GAME_SPEED);
+      SL.Forest.drawPost(ctx, this.time);
       if (this.slowmo) { ctx.fillStyle = 'rgba(255,170,90,0.08)'; ctx.fillRect(0, 0, SL.W, SL.H); }
       if (this.mode !== 'attract') this.drawHUD(ctx);
       if (this.banner) this.drawBanner(ctx);

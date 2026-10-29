@@ -29,7 +29,7 @@
     const c = document.createElement('canvas');
     c.width = 240; c.height = 134;
     const ctx = c.getContext('2d');
-    ctx.drawImage(w.bg, 0, 0, 240, 134);
+    SL.Forest.preview(ctx, 240, 134);
     ctx.drawImage(w.tileCanvas, 0, 0, 240, 134);
     mapCache[map.id] = c.toDataURL();
     return mapCache[map.id];
@@ -194,7 +194,7 @@
 
     r_main() {
       const s = SL.save.data;
-      return '<div class="panel main">' +
+      return '<div class="panel dark main">' +
         '<h1 class="logo">Stick <span>Legends</span></h1>' +
         '<p class="tag">' + t('tagline') + '</p>' +
         '<div class="pts">⭐ ' + s.points + ' ' + t('points') + '</div>' +
@@ -221,7 +221,7 @@
 
     r_ffa() {
       const st = SL.save.data.settings;
-      return '<div class="panel">' +
+      return '<div class="panel dark">' +
         '<h2>⚔️ ' + t('ffa') + '</h2>' +
         '<div class="field"><label>' + t('enemies') + '</label><div class="stepper"><button data-act="bots-">−</button><span>' + st.bots + '</span><button data-act="bots+">+</button></div></div>' +
         '<div class="field"><label>' + t('difficulty') + '</label>' + this.seg('diff', SL.DIFFS.map((d, i) => ({ v: i, html: tn(d.name) })), st.diff) + '</div>' +
@@ -234,7 +234,7 @@
 
     r_waves() {
       const st = SL.save.data.settings;
-      return '<div class="panel">' +
+      return '<div class="panel dark">' +
         '<h2>🌊 ' + t('waves') + '</h2>' +
         '<div class="field"><label>' + t('difficulty') + '</label>' + this.seg('waveDiff', SL.DIFFS.map((d, i) => ({ v: i, html: tn(d.name) })), st.waveDiff) + '</div>' +
         '<div class="field col"><label>' + t('arena') + '</label>' + this.mapSeg('waveMap', st.waveMap) + '</div>' +
@@ -253,7 +253,7 @@
           (id ? itemIcon(cat, id) + '<span>' + tn(tb[id].name) + '</span>' : '<span class="emptyslot">＋</span><span>' + t('empty') + '</span>') +
           '</button>';
       };
-      let html = '<div class="panel wide"><h2>🎒 ' + t('loadout') + '</h2><p class="hint">' + t('slotsInfo', { n: nAb }) + '</p>';
+      let html = '<div class="panel dark wide"><h2>🎒 ' + t('loadout') + '</h2><p class="hint">' + t('slotsInfo', { n: nAb }) + '</p>';
       html += '<h3>' + t('weapons') + '</h3><div class="slots">' + lo.weapons.map((id, i) => slot('weapons', i, id, String(i + 1))).join('') + '</div>';
       html += '<h3>' + t('abilities') + '</h3><div class="slots">' + lo.abilities.map((id, i) => slot('abilities', i, id, SL.input.label('ab' + (i + 1)))).join('');
       for (let i = nAb; i < 5; i++) html += '<button class="slot locked" disabled><span class="emo">🔒</span><span>' + t('locked') + '</span></button>';
@@ -267,7 +267,7 @@
     pickerHtml() {
       const p = this.picker, tb = table(p.cat), cur = SL.save.data.loadout[p.cat][p.i];
       const ids = Object.keys(tb).filter((id) => !tb[id].hidden && SL.save.owns(id));
-      let html = '<div class="modal"><div class="panel"><h2>' + t('choose') + '</h2><div class="picklist">';
+      let html = '<div class="modal"><div class="panel dark"><h2>' + t('choose') + '</h2><div class="picklist">';
       html += '<button class="pick ' + (cur ? '' : 'on') + '" data-act="set" data-id=""><span class="emo">✖️</span><div><b>' + t('empty') + '</b></div></button>';
       for (const id of ids) {
         const it = tb[id];
@@ -316,7 +316,7 @@
         return '<button class="chip ' + (lk[kind] === id ? 'on' : '') + (owned ? '' : ' lockd') + '" data-act="' + kind + '" data-v="' + id + '" title="' + tn(tbl[id].name) + '">' +
           '<span class="emo">' + tbl[id].icon + '</span><small>' + (owned ? tn(tbl[id].name) : '🔒 ⭐' + tbl[id].price) + '</small></button>';
       }).join('');
-      return '<div class="panel wide look"><h2>🧍 ' + t('look') + '</h2><div class="lookwrap"><canvas id="preview" width="220" height="260"></canvas><div class="lookopts">' +
+      return '<div class="panel dark wide look"><h2>🧍 ' + t('look') + '</h2><div class="lookwrap"><canvas id="preview" width="220" height="260"></canvas><div class="lookopts">' +
         '<h3>' + t('color') + '</h3><div class="swatches">' + SL.COLORS.map((c) => '<button class="sw ' + (lk.color === c ? 'on' : '') + '" data-act="color" data-v="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('') + '</div>' +
         '<h3>' + t('hat') + '</h3><div class="chips">' + opts('hat', SL.HATS) + '</div>' +
         '<h3>' + t('face') + '</h3><div class="chips">' + opts('face', SL.FACES) + '</div>' +
@@ -371,7 +371,7 @@
     },
 
     r_pause() {
-      return '<div class="panel small"><h2>⏸ ' + t('pause') + '</h2><div class="col">' +
+      return '<div class="panel dark small"><h2>⏸ ' + t('pause') + '</h2><div class="col">' +
         '<button class="primary" data-act="resume" data-back>▶ ' + t('resume') + '</button>' +
         '<button data-act="restart">↻ ' + t('restart') + '</button>' +
         '<button data-act="quit">🏠 ' + t('mainMenu') + '</button></div></div>';
@@ -385,7 +385,7 @@
       if (r.mode === 'waves') stats += '<li><span>' + t('waveReached') + '</span><b>' + r.wave + '</b></li>';
       else stats += '<li><span>' + t('roundsWon') + '</span><b>' + r.roundsWon + '</b></li>';
       stats += '<li><span>' + t('earned') + '</span><b>⭐ ' + (r.earned || 0) + '</b></li>';
-      return '<div class="panel small"><h2 class="big">' + emo + ' ' + title + '</h2><ul class="stats">' + stats + '</ul>' +
+      return '<div class="panel dark small"><h2 class="big">' + emo + ' ' + title + '</h2><ul class="stats">' + stats + '</ul>' +
         '<div class="pts">⭐ ' + SL.save.data.points + ' ' + t('points') + '</div>' +
         '<div class="col"><button class="primary" data-act="again">↻ ' + t('again') + '</button>' +
         '<button data-act="shop">🛒 ' + t('shop') + '</button>' +
