@@ -129,10 +129,10 @@
   };
 
   SL.BOT_TYPES = {
-    brawler: { name: { de: 'Nahkämpfer', en: 'Brawler' }, weapons: ['sword', 'hammer', 'spear'], abilities: ['teleport', 'wind', 'bubble'], extras: ['helmet'], style: 'melee', hp: 100, speed: 1.03 },
-    gunner: { name: { de: 'Schütze', en: 'Gunner' }, weapons: ['firestaff', 'bombs', 'rockets', 'frostbow', 'sword'], abilities: ['teleport', 'earthwall', 'wind'], extras: ['turret'], style: 'far', hp: 90, speed: 1 },
-    mage: { name: { de: 'Magier', en: 'Mage' }, weapons: ['lightstaff', 'gravity', 'firestaff', 'spear'], abilities: ['thunder', 'slowmo', 'spirit', 'wind', 'invis', 'teleport'], extras: [], style: 'mid', hp: 85, speed: 1 },
-    tank: { name: { de: 'Panzer', en: 'Tank' }, weapons: ['hammer', 'spear', 'bombs'], abilities: ['bubble', 'wind', 'earthwall'], extras: ['chest', 'helmet'], style: 'melee', hp: 140, speed: 0.95 },
+    brawler: { name: { de: 'Drache', en: 'Dragon' }, weapons: ['sword', 'hammer', 'spear'], abilities: ['teleport', 'wind', 'bubble'], extras: ['helmet'], style: 'melee', hp: 100, speed: 1.03 },
+    gunner: { name: { de: 'Echse', en: 'Lizard' }, weapons: ['firestaff', 'bombs', 'rockets', 'frostbow', 'sword'], abilities: ['teleport', 'earthwall', 'wind'], extras: ['turret'], style: 'far', hp: 90, speed: 1 },
+    mage: { name: { de: 'Flügeldrache', en: 'Wyvern' }, weapons: ['lightstaff', 'gravity', 'firestaff', 'spear'], abilities: ['thunder', 'slowmo', 'spirit', 'wind', 'invis', 'teleport'], extras: [], style: 'mid', hp: 85, speed: 1 },
+    tank: { name: { de: 'Steingolem', en: 'Stone Golem' }, weapons: ['hammer', 'spear', 'bombs'], abilities: ['bubble', 'wind', 'earthwall'], extras: ['chest', 'helmet'], style: 'melee', hp: 140, speed: 0.95 },
   };
 
   SL.DIFFS = [

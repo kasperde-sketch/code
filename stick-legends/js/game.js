@@ -31,6 +31,7 @@
       this.banner = null;
       this.wheel = null;
       this.invOpen = false;
+      this.cam = { x: SL.W / 2, y: SL.H / 2, z: 1 };
       this.fighters = []; this.projectiles = []; this.entities = [];
       this.spawnQueue = [];
       this.usedColors = [];
@@ -63,7 +64,7 @@
       if (this.usedColors.length >= SL.COLORS.length - 1) this.usedColors = this.usedColors.slice(0, 1);
       const hats = ['none', 'none', 'cap', 'tophat', 'wizard', 'viking'];
       return {
-        sid, name: SL.tn(type.name), color, team, isPlayer: false, type: type.id,
+        sid, name: SL.tn(type.name), color, team, isPlayer: false, type: type.id, species: SL.SPECIES_OF_TYPE[type.id],
         look: { hat: type.id === 'mage' ? 'wizard' : type.id === 'tank' ? 'viking' : U.pick(hats), face: U.pick(['normal', 'angry', 'cool', 'happy']), cape: 'none' },
         weapons, abilities, extras: type.extras.slice(),
         hp: Math.round(type.hp * (1 + scale * 0.5)), speed: type.speed,
@@ -126,13 +127,50 @@
       return 0.35;
     }
 
+    // Kamera: Bildschirm- in Weltkoordinaten umrechnen und umgekehrt
+    screenToWorld(x, y) {
+      const c = this.cam;
+      return { x: (x - SL.W / 2) / c.z + c.x, y: (y - SL.H / 2) / c.z + c.y };
+    }
+    worldToScreen(x, y) {
+      const c = this.cam;
+      return { x: (x - c.x) * c.z + SL.W / 2, y: (y - c.y) * c.z + SL.H / 2 };
+    }
+    // zoomt auf alle lebenden Kämpfer, damit das Geschehen gut erkennbar bleibt
+    updateCamera(dt) {
+      const c = this.cam;
+      const live = this.fighters.filter((f) => f.alive && f.cy < SL.H + 40 && f.cy > -200);
+      let tx = SL.W / 2, ty = SL.H / 2, tz = 1;
+      if (live.length) {
+        let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+        for (const f of live) {
+          x0 = Math.min(x0, f.cx); x1 = Math.max(x1, f.cx);
+          y0 = Math.min(y0, f.cy); y1 = Math.max(y1, f.cy);
+        }
+        x0 = U.clamp(x0, 0, SL.W); x1 = U.clamp(x1, 0, SL.W); y0 = U.clamp(y0, 0, SL.H); y1 = U.clamp(y1, 0, SL.H);
+        const bw = x1 - x0 + 520, bh = y1 - y0 + 380;
+        tz = U.clamp(Math.min(SL.W / bw, SL.H / bh), 1, 1.55);
+        tx = (x0 + x1) / 2; ty = (y0 + y1) / 2 - 20;
+      }
+      const k = Math.min(1, dt * 2.2);
+      c.z += (tz - c.z) * k;
+      const hw = SL.W / (2 * c.z), hh = SL.H / (2 * c.z);
+      c.x = U.clamp(c.x + (tx - c.x) * k, hw, SL.W - hw);
+      c.y = U.clamp(c.y + (ty - c.y) * k, hh, SL.H - hh);
+    }
+
     update(dt, pin) {
       if (this.paused || this.over) return;
+      dt *= SL.GAME_SPEED;
       const pl = this.player;
+      if (!SL.input.usePad && this.mode !== 'attract') {
+        const w = this.screenToWorld(pin.aimX, pin.aimY);
+        pin = Object.assign({}, pin, { aimX: w.x, aimY: w.y });
+      }
       // Waffenrad
       if (pl && pin.wheel && pl.state === 'normal' && this.mode !== 'attract') {
         if (!this.wheel) this.wheel = { sel: pl.weaponIdx };
-        const v = SL.input.wheelVector(pl);
+        const v = SL.input.usePad ? SL.input.wheelVector(pl) : { x: pin.aimX - pl.x, y: pin.aimY - (pl.y - 34) };
         if (U.hypot(v.x, v.y) > (SL.input.usePad ? 0.4 : 24)) {
           const a = Math.atan2(v.y, v.x);
           this.wheel.sel = (Math.round((a + Math.PI / 2) / (Math.PI / 2)) + 4) % 4;
@@ -191,6 +229,7 @@
       this.world.update(dt, this);
       this.crushCheck();
       this.fx.update(dt);
+      this.updateCamera(dt);
       if (this.state === 'play') this.checkEnd(dt);
     }
 
@@ -310,7 +349,11 @@
     // ---------- Zeichnen ----------
     draw(ctx) {
       ctx.save();
-      if (this.fx.shake > 0) ctx.translate(U.rand(-1, 1) * this.fx.shake, U.rand(-1, 1) * this.fx.shake);
+      if (this.fx.shake > 0) ctx.translate(U.rand(-1, 1) * this.fx.shake * 0.6, U.rand(-1, 1) * this.fx.shake * 0.6);
+      const cam = this.cam;
+      ctx.translate(SL.W / 2, SL.H / 2);
+      ctx.scale(cam.z, cam.z);
+      ctx.translate(-cam.x, -cam.y);
       this.world.drawBack(ctx);
       this.world.drawTiles(ctx);
       for (const e of this.entities) e.draw(ctx, this);
@@ -439,7 +482,13 @@
       const save = SL.save.data;
       ctx.textAlign = 'right';
       ctx.fillStyle = PANEL;
-      rr(SL.W - 314, 14, 300, this.mode === 'ffa' ? 76 : 64, 14); ctx.fill();
+      let pw = 300;
+      if (this.mode === 'ffa') {
+        ctx.font = '600 12px system-ui, sans-serif';
+        const label = SL.t('round', { n: this.roundNo }) + ' · ' + SL.t('roundsToWin') + ': ' + this.opts.rounds;
+        pw = Math.max(300, this.specs.length * 28 + ctx.measureText(label).width + 40);
+      }
+      rr(SL.W - pw - 14, 14, pw, this.mode === 'ffa' ? 76 : 64, 14); ctx.fill();
       ctx.fillStyle = '#ffd166';
       ctx.font = 'bold 20px system-ui, sans-serif';
       ctx.fillText('⭐ ' + save.points + (this.earned ? '  (+' + this.earned + ')' : ''), SL.W - 30, 42);
@@ -469,7 +518,8 @@
     drawWheel(ctx) {
       const p = this.player;
       if (!p) return;
-      const cx = U.clamp(p.x, 130, SL.W - 130), cy = U.clamp(p.y - 34, 130, SL.H - 130);
+      const sp = this.worldToScreen(p.x, p.y - 34);
+      const cx = U.clamp(sp.x, 130, SL.W - 130), cy = U.clamp(sp.y, 130, SL.H - 130);
       ctx.save();
       ctx.fillStyle = 'rgba(20,30,45,0.55)';
       ctx.beginPath(); ctx.arc(cx, cy, 110, 0, Math.PI * 2); ctx.fill();

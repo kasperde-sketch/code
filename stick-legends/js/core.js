@@ -9,6 +9,7 @@ window.SL = window.SL || {};
   SL.COLS = 50;
   SL.ROWS = 28;
   SL.G = 2200;
+  SL.GAME_SPEED = 0.75; // ruhigeres Spieltempo (1 = schnell)
 
   SL.U = {
     clamp: (v, a, b) => (v < a ? a : v > b ? b : v),

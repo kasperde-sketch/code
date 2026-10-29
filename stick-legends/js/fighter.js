@@ -19,6 +19,7 @@
       this.ai = null;
       this.look = o.look || { hat: 'none', face: 'normal', cape: 'none' };
       this.capeColor = SL.CAPES[this.look.cape] ? SL.CAPES[this.look.cape].color : null;
+      this.species = o.species || null;
       this.weapons = (o.weapons || []).slice(0, 4);
       while (this.weapons.length < 4) this.weapons.push(null);
       this.abilities = (o.abilities || []).filter((a) => a);
@@ -82,6 +83,8 @@
       this.skel.snap(this.tg);
       this.cape = [];
       for (let i = 0; i < 5; i++) this.cape.push({ x: this.x, y: this.y - 47 + i * 7, px: this.x, py: this.y - 47 + i * 7 });
+      this.tail = [];
+      for (let i = 1; i <= 7; i++) this.tail.push({ x: this.x - this.facing * i * 6, y: this.y - 26, px: this.x - this.facing * i * 6, py: this.y - 26 });
     }
 
     get weapon() { return SL.WEAPONS[this.weapons[this.weaponIdx]] || SL.WEAPONS.fists; }
@@ -876,6 +879,7 @@
     }
 
     updateCape(dt) {
+      if (this.species && SL.SPECIES[this.species].tail) this.updateTail(dt);
       if (!this.capeColor) return;
       const n = this.skel.p[P.NECK];
       let px = n.x, py = n.y;
@@ -886,6 +890,23 @@
         c.y += vy + 900 * dt * dt;
         const dx = c.x - px, dy = c.y - py, l = U.hypot(dx, dy) || 1;
         c.x = px + dx / l * 7; c.y = py + dy / l * 7;
+        px = c.x; py = c.y;
+      }
+    }
+
+    // Schwanz der Kreaturen: schwingt locker hinterher
+    updateTail(dt) {
+      const pv = this.skel.p[P.PELVIS];
+      const dead = this.state === 'dead';
+      const sway = Math.sin(this.game.time * 3 + this.id) * 0.25;
+      let px = pv.x - this.facing * 2, py = pv.y - 2;
+      for (const c of this.tail) {
+        const vx = (c.x - c.px) * 0.86, vy = (c.y - c.py) * 0.86;
+        c.px = c.x; c.py = c.y;
+        c.x += vx - (dead ? 0 : this.facing * 0.9);
+        c.y += vy + (dead ? 1200 * dt * dt : sway - 0.12);
+        const dx = c.x - px, dy = c.y - py, l = U.hypot(dx, dy) || 1;
+        c.x = px + dx / l * 6.5; c.y = py + dy / l * 6.5;
         px = c.x; py = c.y;
       }
     }
@@ -902,7 +923,15 @@
         const h = this.skel.p[P.HAND_R], e = this.skel.p[P.ELBOW_R];
         wAng = Math.atan2(h.y - e.y, h.x - e.x);
       }
-      SL.drawStick(ctx, this.skel.p, {
+      if (this.species) {
+        SL.drawCreature(ctx, this.skel.p, {
+          species: this.species, color: this.color, facing: this.facing, flash: this.flashT > 0, alpha,
+          tailPts: this.tail, time: this.game.time, airborne: this.state === 'normal' && !this.grounded,
+          weapon: showWeapon ? this.weapons[this.weaponIdx] : null, weaponAng: wAng,
+          weaponOpt: { charge: this.charge / (this.weapon.maxCharge || 1), time: this.game.time },
+          dead: this.state === 'dead',
+        });
+      } else SL.drawStick(ctx, this.skel.p, {
         color: this.color, facing: this.facing, flash: this.flashT > 0, alpha,
         hat: this.look.hat, face: this.look.face, cape: this.capeColor, capePts: this.cape,
         helmet: this.hasHelmet, chest: this.hasChest, jetpack: this.hasJetpack,
