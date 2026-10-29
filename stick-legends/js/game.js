@@ -394,7 +394,7 @@
 
     drawHUD(ctx) {
       const p = this.player;
-      const PANEL = 'rgba(16,20,29,0.8)', SLOT = 'rgba(255,255,255,0.07)', DIM = '#8e98aa';
+      const PANEL = 'rgba(5,20,22,0.78)', SLOT = 'rgba(160,230,210,0.08)', DIM = '#8fb3aa';
       ctx.save();
       const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
       if (p) {
