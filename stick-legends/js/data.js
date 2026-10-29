@@ -142,51 +142,49 @@
     { id: 'extreme', name: { de: 'Extrem', en: 'Extreme' }, react: 0.09, aimErr: 0.025, block: 0.75, dodge: 0.7, aggr: 1, dmg: 1.3, pts: 2.2 },
   ];
 
-  // Arenen der Welt "Wiese". rect(Typ, Spalte0, Zeile0, Spalte1, Zeile1)
-  // # Erde  S Stein  W Holz  C Kiste  L Blätter  B Baumstamm
+  // Arenen der Welt "Wiese" – zusammenhängende Natur, keine schwebenden Plattformen.
+  // ground(Höhen): pro Spalte die Oberkante (Zeile), null = Schlucht. rect(Typ, Spalte0, Zeile0, Spalte1, Zeile1).
+  // tree(Spalte, Oberkante, Kronengröße). # Erde  S Fels  W Baumstamm (liegend)  C Felsbrocken  L Blätter  B Stamm
+  const _ = null;
   SL.MAPS = [
     {
       id: 'hills', name: { de: 'Grüne Hügel', en: 'Green Hills' },
       build(m) {
-        m.rect('#', 5, 22, 44, 27);
-        m.rect('#', 18, 20, 31, 21);
-        m.rect('#', 21, 19, 28, 19);
-        m.rect('C', 9, 20, 10, 21); m.rect('C', 9, 19, 9, 19);
-        m.rect('C', 39, 20, 40, 21); m.rect('C', 40, 19, 40, 19);
-        m.rect('S', 7, 15, 7, 15); m.rect('W', 8, 15, 13, 15); m.rect('S', 14, 15, 14, 15);
-        m.rect('S', 35, 15, 35, 15); m.rect('W', 36, 15, 41, 15); m.rect('S', 42, 15, 42, 15);
-        m.rect('S', 21, 11, 21, 11); m.rect('W', 22, 11, 27, 11); m.rect('S', 28, 11, 28, 11);
-        m.rect('C', 24, 10, 25, 10);
+        m.ground([_, _, _, 19, 18, 18, 17, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, _, _, _,
+          19, 18, 16, 15, 14, 14, 15, 16, 17, 18, 19, _, _, _, 21, 20, 20, 19, 18, 17, 17, 18, 18, 19, 19, 20, 20, _, _, _]);
+        m.tree(6, 17, 3);
+        m.tree(41, 17, 3);
+        m.rect('S', 24, 12, 25, 13); m.rect('S', 23, 13, 23, 13);
+        m.rect('C', 11, 17, 12, 17); m.rect('C', 11, 16, 11, 16);
+        m.rect('W', 35, 19, 37, 19);
+        m.rect('C', 44, 18, 44, 18);
+        m.rect('L', 20, 18, 20, 18); m.rect('L', 29, 17, 29, 17);
       },
-      spawns: [[12, 17], [37, 17], [24, 7], [10, 12], [39, 12], [20, 16], [29, 16], [16, 18]],
     },
     {
-      id: 'bridge', name: { de: 'Holzbrücke', en: 'Wooden Bridge' },
+      id: 'gorge', name: { de: 'Felsschlucht', en: 'Rocky Gorge' },
       build(m) {
-        m.rect('#', 2, 17, 13, 27); m.rect('#', 36, 17, 47, 27);
-        m.rect('W', 14, 17, 35, 17);
-        m.rect('S', 24, 23, 25, 27); m.rect('S', 21, 22, 28, 22);
-        m.rect('B', 6, 12, 6, 16); m.rect('L', 3, 9, 9, 11);
-        m.rect('B', 43, 12, 43, 16); m.rect('L', 40, 9, 46, 11);
-        m.rect('C', 19, 16, 19, 16); m.rect('C', 30, 16, 30, 16);
-        m.rect('S', 22, 10, 27, 10);
+        m.ground([_, _, 16, 16, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, _, _, _, _, _,
+          _, _, 18, 17, 17, 17, 17, 18, _, _, _, _, _, _, _, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 16, 16, _, _]);
+        // Überhänge aus Fels an den Schluchträndern
+        m.rect('#', 15, 15, 17, 16); m.rect('#', 15, 17, 15, 18);
+        m.rect('#', 32, 15, 34, 16); m.rect('#', 34, 17, 34, 18);
+        m.tree(5, 15, 3); m.tree(44, 15, 3);
+        m.rect('C', 10, 14, 11, 14); m.rect('C', 38, 14, 39, 14);
+        m.rect('L', 13, 14, 13, 14); m.rect('L', 36, 14, 36, 14);
       },
-      spawns: [[10, 14], [39, 14], [24, 6], [5, 5], [44, 5], [17, 13], [32, 13], [24, 19]],
     },
     {
-      id: 'islands', name: { de: 'Schwebende Wiese', en: 'Floating Meadow' },
+      id: 'arch', name: { de: 'Felsbogen', en: 'Stone Arch' },
       build(m) {
-        m.rect('#', 3, 20, 14, 22); m.rect('#', 5, 23, 12, 23); m.rect('#', 7, 24, 10, 24);
-        m.rect('#', 35, 20, 46, 22); m.rect('#', 37, 23, 44, 23); m.rect('#', 39, 24, 42, 24);
-        m.rect('#', 19, 16, 30, 18); m.rect('#', 21, 19, 28, 19); m.rect('#', 23, 20, 26, 20);
-        m.rect('C', 23, 15, 26, 15); m.rect('C', 24, 14, 25, 14);
-        m.rect('S', 9, 13, 9, 13); m.rect('W', 10, 13, 15, 13);
-        m.rect('W', 34, 13, 39, 13); m.rect('S', 40, 13, 40, 13);
-        m.rect('S', 23, 8, 26, 8);
-        m.rect('S', 21, 26, 28, 26);
-        m.rect('L', 4, 18, 5, 19); m.rect('L', 44, 18, 45, 19);
+        m.ground([_, _, 18, 18, 17, 17, 17, 18, 18, _, _, _, 19, 19, 18, 18, 17, 16, 15, 14,
+          13, 13, 12, 12, 12, 12, 12, 12, 13, 13, 14, 15, 16, 17, 18, 18, 19, 19, _, _, _, 18, 18, 17, 17, 17, 18, 18, _, _]);
+        // Tunnel durch den Hügel – oben bleibt ein natürlicher Felsbogen
+        m.clear(21, 16, 28, 20);
+        m.tree(5, 17, 3); m.tree(44, 17, 3);
+        m.rect('C', 14, 17, 15, 17); m.rect('C', 34, 17, 34, 17);
+        m.rect('W', 24, 11, 25, 11);
       },
-      spawns: [[8, 17], [41, 17], [21, 13], [12, 10], [37, 10], [24, 5], [28, 13], [11, 17]],
     },
   ];
 

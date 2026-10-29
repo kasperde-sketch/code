@@ -30,6 +30,7 @@
       this.actionsAllowed = false;
       this.banner = null;
       this.wheel = null;
+      this.invOpen = false;
       this.fighters = []; this.projectiles = []; this.entities = [];
       this.spawnQueue = [];
       this.usedColors = [];
@@ -142,6 +143,7 @@
         if (pl && pl.weapons[this.wheel.sel]) pin.slot = this.wheel.sel;
         this.wheel = null;
       }
+      if (pin.invP && this.mode !== 'attract') this.invOpen = !this.invOpen;
       if (pl && pl.state === 'dead' && this.mode === 'ffa') dt *= 1.8;
       this.time += dt;
       if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; }
@@ -347,84 +349,102 @@
 
     drawHUD(ctx) {
       const p = this.player;
+      const PANEL = 'rgba(16,20,29,0.8)', SLOT = 'rgba(255,255,255,0.07)', DIM = '#8e98aa';
       ctx.save();
       const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
       if (p) {
-        // Panel
-        ctx.fillStyle = 'rgba(255,255,255,0.72)';
-        rr(14, 14, 300, 152, 14); ctx.fill();
-        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(34, 36, 9, 0, Math.PI * 2); ctx.fill();
-        // Leben
+        // Leben und Mana oben links
+        const ph = p.hasJetpack ? 62 : 54;
+        ctx.fillStyle = PANEL; rr(14, 14, 300, ph, 14); ctx.fill();
+        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(34, 34, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.stroke();
         const hpF = Math.max(0, p.hp / p.maxHp);
-        ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(52, 28, 248, 16, 8); ctx.fill();
-        ctx.fillStyle = hpF > 0.5 ? '#4cd964' : hpF > 0.25 ? '#ffcc00' : '#ff3b30';
-        if (hpF > 0) { rr(52, 28, 248 * hpF, 16, 8); ctx.fill(); }
-        ctx.fillStyle = '#1f2937'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(Math.ceil(Math.max(0, p.hp)) + ' / ' + p.maxHp, 176, 40);
-        // Mana
-        ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(52, 48, 248, 8, 4); ctx.fill();
-        ctx.fillStyle = '#5b8cff'; rr(52, 48, 248 * p.mana / 100, 8, 4); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.1)'; rr(52, 24, 248, 16, 8); ctx.fill();
+        ctx.fillStyle = hpF > 0.5 ? '#4ade80' : hpF > 0.25 ? '#facc15' : '#f87171';
+        if (hpF > 0) { rr(52, 24, 248 * hpF, 16, 8); ctx.fill(); }
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(Math.ceil(Math.max(0, p.hp)) + ' / ' + p.maxHp, 176, 36);
+        ctx.fillStyle = 'rgba(255,255,255,0.1)'; rr(52, 46, 248, 7, 4); ctx.fill();
+        ctx.fillStyle = '#60a5fa'; rr(52, 46, 248 * p.mana / 100, 7, 4); ctx.fill();
         if (p.hasJetpack) {
-          ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(52, 59, 248, 5, 3); ctx.fill();
-          ctx.fillStyle = '#ff9f43'; rr(52, 59, 248 * p.jetFuel / 100, 5, 3); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.1)'; rr(52, 57, 248, 5, 3); ctx.fill();
+          ctx.fillStyle = '#fb923c'; rr(52, 57, 248 * p.jetFuel / 100, 5, 3); ctx.fill();
         }
-        // Waffen
+
+        // Waffenleiste unten
+        const sw = 78, sh = 58, gap = 8, bw = 4 * sw + 3 * gap + 20, bx = (SL.W - bw) / 2, by = SL.H - sh - 34;
+        ctx.fillStyle = PANEL; rr(bx, by, bw, sh + 20, 16); ctx.fill();
         for (let i = 0; i < 4; i++) {
-          const x = 24 + i * 70, y = 70, id = p.weapons[i];
-          ctx.fillStyle = i === p.weaponIdx ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.08)';
-          rr(x, y, 62, 44, 9); ctx.fill();
-          if (i === p.weaponIdx) { ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke(); }
+          const x = bx + 10 + i * (sw + gap), y = by + 10, id = p.weapons[i], sel = i === p.weaponIdx;
+          ctx.fillStyle = sel ? 'rgba(255,255,255,0.16)' : SLOT;
+          rr(x, y, sw, sh, 11); ctx.fill();
+          if (sel) { ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke(); }
           if (id) {
             const wd = SL.WEAPONS[id];
-            const len = { spear: 60, hammer: 42, rockets: 46, firestaff: 52, lightstaff: 52, sword: 40, gravity: 34, frostbow: 30, bombs: 16 }[id] || 40;
-            const sc = Math.min(1, 52 / len);
-            SL.drawWeapon(ctx, id, x + 31 - len * sc / 2 + (id === 'frostbow' ? 14 : 0), y + 24, id === 'frostbow' ? 0 : -0.35, sc, { time: this.time });
+            const len = { spear: 92, hammer: 54, rockets: 52, firestaff: 64, lightstaff: 64, sword: 50, gravity: 40, frostbow: 30, bombs: 18 }[id] || 40;
+            const sc = id === 'frostbow' ? 0.95 : Math.min(1, 62 / len);
+            SL.drawWeapon(ctx, id, x + sw / 2 - (id === 'frostbow' ? 0 : len * sc / 2.2), y + sh / 2 + 3, id === 'frostbow' ? 0 : -0.3, sc, { time: this.time });
             if (wd.ammo) {
-              ctx.fillStyle = '#1f2937'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'right';
-              ctx.fillText(p.ammo[id] + '/' + wd.ammo, x + 58, y + 40);
+              ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'right';
+              ctx.fillText(p.ammo[id] + '/' + wd.ammo, x + sw - 6, y + sh - 6);
             }
           }
-          ctx.fillStyle = '#6b7280'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'left';
-          ctx.fillText(String(i + 1), x + 5, y + 12);
+          ctx.fillStyle = DIM; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'left';
+          ctx.fillText(SL.input.label('w' + (i + 1)), x + 6, y + 14);
         }
-        // Fähigkeiten und Ausrüstung
-        let x = 24;
-        const slot = (icon, label, cdFrac, active) => {
-          ctx.fillStyle = 'rgba(0,0,0,0.08)'; rr(x, 122, 38, 38, 9); ctx.fill();
-          ctx.font = '20px ' + EMOJI_FONT; ctx.textAlign = 'center';
-          ctx.fillStyle = '#000000';
-          ctx.globalAlpha = cdFrac > 0 ? 0.45 : 1;
-          ctx.fillText(icon, x + 19, 148);
-          ctx.globalAlpha = 1;
-          if (cdFrac > 0) {
-            ctx.fillStyle = 'rgba(0,0,0,0.35)';
-            ctx.beginPath(); ctx.moveTo(x + 19, 141); ctx.arc(x + 19, 141, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * cdFrac); ctx.fill();
-          }
-          if (active) { ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2; rr(x, 122, 38, 38, 9); ctx.stroke(); }
-          if (label) {
-            ctx.fillStyle = '#1f2937'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'left';
-            ctx.fillText(label, x + 3, 132);
-          }
-          x += 42;
-        };
-        p.abilities.forEach((id, i) => slot(SL.ABILITIES[id].icon, SL.ABILITY_LABELS[i], p.abCd[i] / SL.ABILITIES[id].cd, false));
-        if (p.abilities.length) x += 6;
-        p.extras.forEach((id, i) => {
-          if (!id) return;
-          const e = SL.EXTRAS[id];
-          if (x > 280) return;
-          slot(e.icon, e.active ? SL.EXTRA_LABELS[i] : '', e.cd ? p.exCd[i] / e.cd : 0, id === 'grapple' && p.hook);
-        });
+        const hint = '[' + SL.input.label('inv') + '] ' + SL.t('inventory');
+        ctx.font = '600 12px system-ui, sans-serif'; ctx.textAlign = 'left';
+        const hw = ctx.measureText(hint).width + 20;
+        ctx.fillStyle = PANEL; rr(bx + bw + 8, by + sh / 2 - 4, hw, 26, 13); ctx.fill();
+        ctx.fillStyle = '#e6e9ef';
+        ctx.fillText(hint, bx + bw + 18, by + sh / 2 + 13);
+
+        // Inventar (Fähigkeiten + Ausrüstung)
+        if (this.invOpen) {
+          const cs = 52, cg = 8;
+          const rows = [
+            { title: SL.t('abilities'), items: p.abilities.map((id, i) => ({ icon: SL.ABILITIES[id].icon, key: SL.input.label('ab' + (i + 1)), cd: p.abCd[i] / SL.ABILITIES[id].cd })) },
+            { title: SL.t('extras'), items: p.extras.map((id, i) => id ? { icon: SL.EXTRAS[id].icon, key: SL.EXTRAS[id].active ? SL.input.label('ex' + (i + 1)) : '', cd: SL.EXTRAS[id].cd ? p.exCd[i] / SL.EXTRAS[id].cd : 0, on: id === 'grapple' && p.hook } : null) },
+          ];
+          const maxN = Math.max(4, ...rows.map((r) => r.items.length));
+          const iw = maxN * (cs + cg) - cg + 32, ih = rows.length * (cs + 26) + 18;
+          const ix = (SL.W - iw) / 2, iy = by - ih - 12;
+          ctx.fillStyle = PANEL; rr(ix, iy, iw, ih, 16); ctx.fill();
+          rows.forEach((row, ri) => {
+            const ry = iy + 14 + ri * (cs + 26);
+            ctx.fillStyle = DIM; ctx.font = '700 11px system-ui, sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText(row.title.toUpperCase(), ix + 16, ry + 8);
+            row.items.forEach((it, k) => {
+              const x = ix + 16 + k * (cs + cg), y = ry + 16;
+              ctx.fillStyle = SLOT; rr(x, y, cs, cs, 10); ctx.fill();
+              if (!it) return;
+              ctx.font = '26px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.fillStyle = '#000';
+              ctx.globalAlpha = it.cd > 0 ? 0.4 : 1;
+              ctx.fillText(it.icon, x + cs / 2, y + cs / 2 + 10);
+              ctx.globalAlpha = 1;
+              if (it.cd > 0) {
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.beginPath(); ctx.moveTo(x + cs / 2, y + cs / 2); ctx.arc(x + cs / 2, y + cs / 2, cs / 2 - 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * it.cd); ctx.fill();
+              }
+              if (it.on) { ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2; rr(x, y, cs, cs, 10); ctx.stroke(); }
+              if (it.key) {
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'left';
+                ctx.fillText(it.key, x + 5, y + 12);
+              }
+            });
+          });
+        }
       }
       // oben rechts
       const save = SL.save.data;
       ctx.textAlign = 'right';
-      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.fillStyle = PANEL;
       rr(SL.W - 314, 14, 300, this.mode === 'ffa' ? 76 : 64, 14); ctx.fill();
-      ctx.fillStyle = '#1f2937';
+      ctx.fillStyle = '#ffd166';
       ctx.font = 'bold 20px system-ui, sans-serif';
       ctx.fillText('⭐ ' + save.points + (this.earned ? '  (+' + this.earned + ')' : ''), SL.W - 30, 42);
       ctx.font = '600 15px system-ui, sans-serif';
+      ctx.fillStyle = '#e6e9ef';
       if (this.mode === 'waves') {
         const left = this.fighters.filter((f) => f.alive && f.team !== 0).length + this.spawnQueue.length;
         ctx.fillText(SL.t('wave', { n: Math.max(1, this.wave) }) + ' · ' + SL.t('enemiesLeft', { n: left }), SL.W - 30, 66);
@@ -440,7 +460,7 @@
           ctx.fillText(String(this.scores[i]), xx - 10, 72);
           xx -= 28;
         }
-        ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.font = '600 12px system-ui, sans-serif';
+        ctx.fillStyle = DIM; ctx.textAlign = 'right'; ctx.font = '600 12px system-ui, sans-serif';
         ctx.fillText(SL.t('round', { n: this.roundNo }) + ' · ' + SL.t('roundsToWin') + ': ' + this.opts.rounds, xx + 4, 72);
       }
       ctx.restore();

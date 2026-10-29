@@ -10,12 +10,12 @@
   function weaponIcon(id) {
     if (iconCache[id]) return iconCache[id];
     const c = document.createElement('canvas');
-    c.width = 120; c.height = 60;
+    c.width = 120; c.height = 72;
     const ctx = c.getContext('2d');
-    const len = { spear: 86, hammer: 50, rockets: 56, firestaff: 62, lightstaff: 62, sword: 44, gravity: 40, frostbow: 30, bombs: 20 }[id] || 40;
-    const sc = id === 'frostbow' ? 1.3 : Math.min(2.2, 100 / len);
-    if (id === 'frostbow') ctx.translate(52, 30);
-    else ctx.translate(60 - (len * sc) / 2 * Math.cos(-0.35), 34);
+    const len = { spear: 92, hammer: 54, rockets: 52, firestaff: 64, lightstaff: 64, sword: 50, gravity: 40, frostbow: 30, bombs: 20 }[id] || 40;
+    const sc = id === 'frostbow' ? 1.35 : Math.min(1.8, 96 / len);
+    if (id === 'frostbow') ctx.translate(52, 36);
+    else ctx.translate(60 - (len * sc) / 2 * Math.cos(-0.35), 44);
     SL.drawWeapon(ctx, id, 0, 0, id === 'frostbow' ? 0 : -0.35, sc, { charge: 0, time: 0.3 });
     iconCache[id] = c.toDataURL();
     return iconCache[id];
@@ -61,6 +61,8 @@
 
     show(screen) {
       this.screen = screen;
+      this.listen = null;
+      SL.input.capture = null;
       this.picker = null;
       this.render();
       this.root.classList.remove('hidden');
@@ -131,6 +133,27 @@
           st.lang = ds.v; SL.lang = ds.v; SL.save.store();
           document.documentElement.lang = ds.v;
           this.render();
+          break;
+        case 'bind': {
+          const a2 = ds.a, i2 = +ds.i;
+          this.listen = { a: a2, i: i2 };
+          this.render();
+          SL.input.capture = (code, key) => {
+            const keys = st.keys;
+            if (code === 'Delete' || code === 'Backspace') keys[a2][i2] = null;
+            else if (code) {
+              for (const k in keys) keys[k] = keys[k].map((c) => (c === code ? null : c));
+              keys[a2][i2] = code;
+              if (key && key.length === 1 && key !== ' ') st.keyLabels[code] = key.toUpperCase();
+            }
+            this.listen = null;
+            SL.save.store();
+            this.render();
+          };
+          break;
+        }
+        case 'resetKeys':
+          st.keys = SL.defaultKeys(); st.keyLabels = {}; SL.save.store(); this.render();
           break;
         case 'reset':
           if (window.confirm(t('resetConfirm'))) { SL.save.reset(); this.show('main'); }
@@ -232,10 +255,10 @@
       };
       let html = '<div class="panel wide"><h2>🎒 ' + t('loadout') + '</h2><p class="hint">' + t('slotsInfo', { n: nAb }) + '</p>';
       html += '<h3>' + t('weapons') + '</h3><div class="slots">' + lo.weapons.map((id, i) => slot('weapons', i, id, String(i + 1))).join('') + '</div>';
-      html += '<h3>' + t('abilities') + '</h3><div class="slots">' + lo.abilities.map((id, i) => slot('abilities', i, id, SL.ABILITY_LABELS[i])).join('');
+      html += '<h3>' + t('abilities') + '</h3><div class="slots">' + lo.abilities.map((id, i) => slot('abilities', i, id, SL.input.label('ab' + (i + 1)))).join('');
       for (let i = nAb; i < 5; i++) html += '<button class="slot locked" disabled><span class="emo">🔒</span><span>' + t('locked') + '</span></button>';
       html += '</div><p class="hint">' + t('abilitySlotsInfo') + '</p>';
-      html += '<h3>' + t('extras') + '</h3><div class="slots">' + lo.extras.map((id, i) => slot('extras', i, id, id && SL.EXTRAS[id].active ? SL.EXTRA_LABELS[i] : '')).join('') + '</div>';
+      html += '<h3>' + t('extras') + '</h3><div class="slots">' + lo.extras.map((id, i) => slot('extras', i, id, id && SL.EXTRAS[id].active ? SL.input.label('ex' + (i + 1)) : '')).join('') + '</div>';
       html += '<div class="row"><button data-back data-act="main">← ' + t('back') + '</button><button data-act="shop">🛒 ' + t('shop') + '</button></div></div>';
       if (this.picker) html += this.pickerHtml();
       return html;
@@ -258,15 +281,17 @@
     r_shop() {
       const s = SL.save.data;
       const tabs = [['weapons', '⚔️ ' + t('weapons')], ['abilities', '✨ ' + t('abilities')], ['extras', '🛡️ ' + t('extras')], ['cosmetics', '🎩 ' + t('cosmetics')]];
-      let html = '<div class="panel wide"><h2>🛒 ' + t('shop') + '</h2><div class="pts">⭐ ' + s.points + ' ' + t('points') + '</div>';
+      let html = '<div class="panel wide dark shop"><div class="shophead"><h2>🛒 ' + t('shop') + '</h2><div class="pts">⭐ ' + s.points + '</div></div>';
       html += '<div class="tabs">' + tabs.map(([k, l]) => '<button data-act="tab" data-v="' + k + '" class="' + (this.shopTab === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
       const cards = [];
       const card = (key, icon, name, desc, price) => {
         const owned = SL.save.owns(key);
         const can = s.points >= price;
-        cards.push('<div class="card ' + (owned ? 'owned' : '') + '">' + icon + '<b>' + name + '</b>' + (desc ? '<small>' + desc + '</small>' : '') +
-          (owned ? '<span class="tagok">✓ ' + t('owned') + '</span>' :
-            '<button class="' + (can ? 'primary' : '') + '" data-act="buy" data-id="' + key + '" data-price="' + price + '" data-name="' + name + '"' + (can ? '' : ' disabled') + '>' + t('buy') + ' ⭐ ' + price + '</button>') + '</div>');
+        cards.push('<div class="card ' + (owned ? 'owned' : '') + '"><div class="cimg">' + icon + '</div>' +
+          '<div class="cbody"><b>' + name + '</b>' + (desc ? '<small>' + desc + '</small>' : '') + '</div>' +
+          '<div class="cfoot">' + (owned ? '<span class="tagok">✓ ' + t('owned') + '</span>' :
+            '<span class="price">⭐ ' + price + '</span><button class="' + (can ? 'primary' : '') + '" data-act="buy" data-id="' + key + '" data-price="' + price + '" data-name="' + name + '"' + (can ? '' : ' disabled') + '>' + t('buy') + '</button>') +
+          '</div></div>');
       };
       if (this.shopTab === 'cosmetics') {
         for (const id in SL.HATS) if (id !== 'none') card('hat_' + id, '<span class="emo">' + SL.HATS[id].icon + '</span>', tn(SL.HATS[id].name), t('hat'), SL.HATS[id].price);
@@ -306,8 +331,8 @@
       const lk = SL.save.data.look;
       ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.save();
-      ctx.translate(110, 210);
-      ctx.scale(2.6, 2.6);
+      ctx.translate(100, 228);
+      ctx.scale(2.2, 2.2);
       const pts = [[2, -60], [1, -49], [0, -28], [4, -14], [6, 0], [-3, -14], [-6, 0], [-5, -39], [-6, -28], [9, -40], [16, -46]].map(([x, y]) => ({ x, y }));
       const cape = [];
       for (let i = 0; i < 5; i++) cape.push({ x: 1 - i * 1.6, y: -49 + (i + 1) * 7 });
@@ -324,19 +349,25 @@
 
     r_settings() {
       const s = SL.save.data;
-      const rows = [
-        ['c_move', 'A / D', 'L-Stick'], ['c_jump', 'W / Leertaste', 'A'], ['c_down', 'S', 'L-Stick ↓'],
-        ['c_aim', SL.lang === 'en' ? 'Mouse' : 'Maus', 'R-Stick'], ['c_attack', SL.lang === 'en' ? 'Left click' : 'Linksklick', 'RT'],
-        ['c_block', SL.lang === 'en' ? 'Right click' : 'Rechtsklick', 'LT'], ['c_dodge', 'Shift', 'B'], ['c_grab', 'F', 'X'],
-        ['c_weapons', '1 – 4 / ' + (SL.lang === 'en' ? 'Wheel' : 'Mausrad'), 'LB / RB'], ['c_wheel', 'Tab', 'Back'],
-        ['c_abilities', 'Q, E', 'Y, R3'], ['c_extras', 'R, T, G, V', 'D-Pad'], ['c_pause', 'Esc / P', 'Start'],
-      ];
-      return '<div class="panel wide"><h2>⚙️ ' + t('settings') + '</h2>' +
+      const PAD = { left: 'L-Stick', right: 'L-Stick', jump: 'A', down: 'L-Stick ↓', attack: 'RT', block: 'LT', dodge: 'B', grab: 'X',
+        w1: 'LB / RB', w2: 'LB / RB', w3: 'LB / RB', w4: 'LB / RB', wheel: 'Back', ab1: 'Y', ab2: 'R3', ab3: 'L3',
+        ex1: 'D-Pad ↑', ex2: 'D-Pad →', ex3: 'D-Pad ↓', ex4: 'D-Pad ←', pause: 'Start' };
+      const name = (a) => {
+        const m = /^(w|ab|ex)(\d)$/.exec(a);
+        if (m) return t({ w: 'k_weapon', ab: 'k_ability', ex: 'k_extra' }[m[1]], { n: m[2] });
+        return t('k_' + a);
+      };
+      const keys = s.settings.keys;
+      const rows = SL.KEY_ACTIONS.map(([a]) => '<tr><td>' + name(a) + '</td>' + [0, 1].map((i) => {
+        const on = this.listen && this.listen.a === a && this.listen.i === i;
+        return '<td><button class="key' + (on ? ' listening' : '') + '" data-act="bind" data-a="' + a + '" data-i="' + i + '">' + (on ? t('pressKey') : U.esc(SL.keyName(keys[a][i]))) + '</button></td>';
+      }).join('') + '<td class="padk">' + (PAD[a] || '—') + '</td></tr>').join('');
+      return '<div class="panel wide dark"><h2>⚙️ ' + t('settings') + '</h2>' +
         '<div class="field"><label>' + t('language') + '</label>' + this.seg('lang', [{ v: 'de', html: 'Deutsch' }, { v: 'en', html: 'English' }], s.settings.lang) + '</div>' +
-        '<h3>' + t('controls') + '</h3><table class="ctrl"><tr><th></th><th>⌨️ ' + t('keyboard') + '</th><th>🎮 ' + t('gamepad') + '</th></tr>' +
-        rows.map(([k, a, b]) => '<tr><td>' + t(k) + '</td><td><kbd>' + U.esc(SL.lang === 'en' ? a.replace('Leertaste', 'Space') : a) + '</kbd></td><td><kbd>' + b + '</kbd></td></tr>').join('') +
-        '</table><p class="hint">' + t('tipClimb') + '</p>' +
-        '<div class="row"><button data-back data-act="main">← ' + t('back') + '</button><button class="danger" data-act="reset">' + t('reset') + '</button></div></div>';
+        '<h3>' + t('keybinds') + '</h3><p class="hint">' + t('bindHint') + '</p>' +
+        '<table class="ctrl keys"><tr><th></th><th>⌨️ 1</th><th>⌨️ 2</th><th>🎮 ' + t('gamepad') + '</th></tr>' + rows + '</table>' +
+        '<p class="hint">' + t('tipClimb') + '</p>' +
+        '<div class="row"><button data-back data-act="main">← ' + t('back') + '</button><button data-act="resetKeys">↺ ' + t('resetKeys') + '</button><button class="danger" data-act="reset">' + t('reset') + '</button></div></div>';
     },
 
     r_pause() {

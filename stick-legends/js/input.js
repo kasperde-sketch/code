@@ -1,15 +1,41 @@
 'use strict';
-// Tastatur, Maus und Gamepad
+// Tastatur, Maus und Gamepad – Tasten frei belegbar
 (function () {
   const SL = window.SL;
   const U = SL.U;
 
-  SL.ABILITY_KEYS = ['KeyQ', 'KeyE', 'KeyC', 'KeyX', 'KeyZ'];
-  SL.ABILITY_LABELS = ['Q', 'E', 'C', 'X', 'Z'];
-  SL.EXTRA_KEYS = ['KeyR', 'KeyT', 'KeyG', 'KeyV'];
-  SL.EXTRA_LABELS = ['R', 'T', 'G', 'V'];
+  // Aktionen mit Standardbelegung (je 2 Plätze)
+  SL.KEY_ACTIONS = [
+    ['left', ['KeyA', 'ArrowLeft']], ['right', ['KeyD', 'ArrowRight']], ['jump', ['KeyW', 'Space']], ['down', ['KeyS', 'ArrowDown']],
+    ['attack', ['Mouse0', null]], ['block', ['Mouse2', 'KeyB']], ['dodge', ['ShiftLeft', null]], ['grab', ['KeyF', null]],
+    ['w1', ['Digit1', null]], ['w2', ['Digit2', null]], ['w3', ['Digit3', null]], ['w4', ['Digit4', null]], ['wheel', ['Tab', null]],
+    ['ab1', ['KeyQ', null]], ['ab2', ['KeyE', null]], ['ab3', ['KeyC', null]], ['ab4', ['KeyX', null]], ['ab5', ['KeyZ', null]],
+    ['ex1', ['KeyR', null]], ['ex2', ['KeyT', null]], ['ex3', ['KeyG', null]], ['ex4', ['KeyV', null]],
+    ['inv', ['KeyI', null]], ['pause', ['Escape', 'KeyP']],
+  ];
+  SL.defaultKeys = function () {
+    const o = {};
+    for (const [a, k] of SL.KEY_ACTIONS) o[a] = k.slice();
+    return o;
+  };
 
-  const GAME_KEYS = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+  const NAMES = {
+    de: { Mouse0: 'Linksklick', Mouse1: 'Mausrad-Klick', Mouse2: 'Rechtsklick', Mouse3: 'Maus 4', Mouse4: 'Maus 5', Space: 'Leertaste', ShiftLeft: 'Shift', ShiftRight: 'Shift rechts', ControlLeft: 'Strg', ControlRight: 'Strg rechts', AltLeft: 'Alt', Escape: 'Esc', Enter: 'Enter', Backspace: '⌫', CapsLock: 'Feststell' },
+    en: { Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4', Mouse4: 'Mouse 5', Space: 'Space', ShiftLeft: 'Shift', ShiftRight: 'Right Shift', ControlLeft: 'Ctrl', ControlRight: 'Right Ctrl', AltLeft: 'Alt', Escape: 'Esc', Enter: 'Enter', Backspace: '⌫', CapsLock: 'Caps' },
+  };
+  const ARROWS = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' };
+  SL.keyName = function (code) {
+    if (!code) return '—';
+    const lbl = SL.save && SL.save.data.settings.keyLabels && SL.save.data.settings.keyLabels[code];
+    if (lbl) return lbl;
+    const n = NAMES[SL.lang] || NAMES.de;
+    if (n[code]) return n[code];
+    if (ARROWS[code]) return ARROWS[code];
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
+    if (/^Numpad/.test(code)) return 'Num ' + code.slice(6);
+    return code;
+  };
 
   SL.blankInput = function () {
     return {
@@ -17,14 +43,14 @@
       attack: false, attackP: false, block: false, dodgeP: false, grabP: false,
       abP: [false, false, false, false, false],
       exP: [false, false, false, false], exH: [false, false, false, false],
-      slot: null, cycle: 0, aimX: 0, aimY: 0, wheel: false,
+      slot: null, cycle: 0, aimX: 0, aimY: 0, wheel: false, invP: false,
     };
   };
 
   const I = SL.input = {
     keys: {},
     pressed: {},
-    mouse: { x: 800, y: 400, down: [false, false, false], pressed: [false, false, false] },
+    mouse: { x: 800, y: 400 },
     wheelDelta: 0,
     padIndex: -1,
     padBtn: [],
@@ -34,29 +60,56 @@
     aimOff: { x: 140, y: -20 },
     pausePressed: false,
     gameActive: false,
+    capture: null, // Funktion, die die nächste Taste zum Belegen bekommt
 
     init(canvas) {
       window.addEventListener('keydown', (e) => {
-        if (I.gameActive && GAME_KEYS.has(e.code)) e.preventDefault();
+        if (I.capture) {
+          e.preventDefault(); e.stopPropagation();
+          const fn = I.capture; I.capture = null;
+          fn(e.code === 'Escape' ? null : e.code, e.key);
+          return;
+        }
+        if (I.gameActive && (I.isGameKey(e.code) || e.code === 'Space' || e.code === 'Tab' || e.code.startsWith('Arrow'))) e.preventDefault();
         if (!I.keys[e.code]) I.pressed[e.code] = true;
         I.keys[e.code] = true;
         I.usePad = false;
-        if (e.code === 'Escape' || e.code === 'KeyP') I.pausePressed = true;
-      });
+        if (e.code === 'Escape' || I.bound('pause', e.code)) I.pausePressed = true;
+      }, true);
       window.addEventListener('keyup', (e) => { I.keys[e.code] = false; });
-      window.addEventListener('blur', () => { I.keys = {}; I.mouse.down = [false, false, false]; });
+      window.addEventListener('blur', () => { I.keys = {}; });
+      window.addEventListener('mousedown', (e) => {
+        if (I.capture && e.button < 5) {
+          e.preventDefault(); e.stopPropagation();
+          const fn = I.capture; I.capture = null;
+          fn('Mouse' + e.button, null);
+        }
+      }, true);
       canvas.addEventListener('mousemove', (e) => { I.setMouse(e); I.usePad = false; });
       canvas.addEventListener('mousedown', (e) => {
         I.setMouse(e);
-        if (e.button < 3) { I.mouse.down[e.button] = true; I.mouse.pressed[e.button] = true; }
+        const c = 'Mouse' + e.button;
+        if (!I.keys[c]) I.pressed[c] = true;
+        I.keys[c] = true;
         I.usePad = false;
       });
-      window.addEventListener('mouseup', (e) => { if (e.button < 3) I.mouse.down[e.button] = false; });
+      window.addEventListener('mouseup', (e) => { I.keys['Mouse' + e.button] = false; });
       canvas.addEventListener('contextmenu', (e) => e.preventDefault());
       canvas.addEventListener('wheel', (e) => { if (I.gameActive) { e.preventDefault(); I.wheelDelta += Math.sign(e.deltaY); } }, { passive: false });
       window.addEventListener('gamepadconnected', (e) => { I.padIndex = e.gamepad.index; });
       window.addEventListener('gamepaddisconnected', (e) => { if (I.padIndex === e.gamepad.index) I.padIndex = -1; });
     },
+
+    binds(action) { return (SL.save.data.settings.keys[action] || []).filter((c) => c); },
+    bound(action, code) { return this.binds(action).includes(code); },
+    isGameKey(code) {
+      const k = SL.save.data.settings.keys;
+      for (const a in k) if (a !== 'pause' && k[a].includes(code)) return true;
+      return false;
+    },
+    down(action) { return this.binds(action).some((c) => I.keys[c]); },
+    hit(action) { return this.binds(action).some((c) => I.pressed[c]); },
+    label(action) { const b = this.binds(action); return b.length ? SL.keyName(b[0]) : ''; },
 
     setMouse(e) {
       const v = SL.view;
@@ -87,38 +140,36 @@
 
     padH(i) { return !!I.padBtn[i]; },
     padP(i) { return !!I.padBtn[i] && !I.padPrev[i]; },
-    k(code) { return !!I.keys[code]; },
-    kp(code) { return !!I.pressed[code]; },
 
     // Eingabe für die Spielerfigur in diesem Bild
     frame(player) {
       const inp = SL.blankInput();
-      const k = I.k, kp = I.kp;
-      let mx = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0);
+      let mx = (I.down('right') ? 1 : 0) - (I.down('left') ? 1 : 0);
       if (I.padAxes[0]) mx = I.padAxes[0];
       inp.moveX = U.clamp(mx, -1, 1);
-      inp.jumpP = kp('KeyW') || kp('Space') || kp('ArrowUp') || I.padP(0);
-      inp.jumpH = k('KeyW') || k('Space') || k('ArrowUp') || I.padH(0);
-      inp.down = k('KeyS') || k('ArrowDown') || I.padAxes[1] > 0.6;
-      inp.attack = I.mouse.down[0] || I.padH(7);
-      inp.attackP = I.mouse.pressed[0] || I.padP(7);
-      inp.block = I.mouse.down[2] || k('KeyB') || I.padH(6);
-      inp.dodgeP = kp('ShiftLeft') || kp('ShiftRight') || I.padP(1);
-      inp.grabP = kp('KeyF') || I.padP(2);
-      for (let i = 0; i < 5; i++) inp.abP[i] = kp(SL.ABILITY_KEYS[i]);
+      inp.jumpP = I.hit('jump') || I.padP(0);
+      inp.jumpH = I.down('jump') || I.padH(0);
+      inp.down = I.down('down') || I.padAxes[1] > 0.6;
+      inp.attack = I.down('attack') || I.padH(7);
+      inp.attackP = I.hit('attack') || I.padP(7);
+      inp.block = I.down('block') || I.padH(6);
+      inp.dodgeP = I.hit('dodge') || I.padP(1);
+      inp.grabP = I.hit('grab') || I.padP(2);
+      for (let i = 0; i < 5; i++) inp.abP[i] = I.hit('ab' + (i + 1));
       if (I.padP(3)) inp.abP[0] = true;
       if (I.padP(11)) inp.abP[1] = true;
       if (I.padP(10)) inp.abP[2] = true;
       const padEx = [12, 15, 13, 14];
       for (let i = 0; i < 4; i++) {
-        inp.exP[i] = kp(SL.EXTRA_KEYS[i]) || I.padP(padEx[i]);
-        inp.exH[i] = k(SL.EXTRA_KEYS[i]) || I.padH(padEx[i]);
+        inp.exP[i] = I.hit('ex' + (i + 1)) || I.padP(padEx[i]);
+        inp.exH[i] = I.down('ex' + (i + 1)) || I.padH(padEx[i]);
       }
-      for (let i = 0; i < 4; i++) if (kp('Digit' + (i + 1))) inp.slot = i;
+      for (let i = 0; i < 4; i++) if (I.hit('w' + (i + 1))) inp.slot = i;
       if (I.wheelDelta) inp.cycle = I.wheelDelta > 0 ? 1 : -1;
       if (I.padP(5)) inp.cycle = 1;
       if (I.padP(4)) inp.cycle = -1;
-      inp.wheel = k('Tab') || I.padH(8);
+      inp.wheel = I.down('wheel') || I.padH(8);
+      inp.invP = I.hit('inv');
 
       const cx = player ? player.x : SL.W / 2, cy = player ? player.y - 34 : SL.H / 2;
       if (I.usePad) {
@@ -142,7 +193,6 @@
 
     endFrame() {
       I.pressed = {};
-      I.mouse.pressed = [false, false, false];
       I.wheelDelta = 0;
       I.pausePressed = false;
     },

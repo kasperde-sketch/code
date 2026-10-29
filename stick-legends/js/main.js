@@ -76,7 +76,7 @@
       SL.menu.hide();
       this.game.paused = false;
       SL.input.gameActive = true;
-      SL.input.mouse.down = [false, false, false];
+      SL.input.keys = {};
     },
     restart() { if (this.lastOpts) this.startGame(Object.assign({}, this.lastOpts)); },
     quit() {
@@ -106,7 +106,7 @@
         let first = true, steps = 0;
         while (this.acc >= STEP && steps < 4) {
           const inp = game.mode === 'attract' || menuOn ? SL.blankInput() : I.frame(game.player);
-          if (!first) { inp.jumpP = false; inp.attackP = false; inp.dodgeP = false; inp.grabP = false; inp.abP.fill(false); inp.exP.fill(false); inp.slot = null; inp.cycle = 0; }
+          if (!first) { inp.jumpP = false; inp.attackP = false; inp.dodgeP = false; inp.grabP = false; inp.abP.fill(false); inp.exP.fill(false); inp.slot = null; inp.cycle = 0; inp.invP = false; }
           game.update(STEP, inp);
           this.acc -= STEP;
           first = false;

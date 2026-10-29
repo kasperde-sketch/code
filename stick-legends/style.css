@@ -112,14 +112,14 @@ button.danger { background: #fde2e1; color: #b91c1c; }
 .slot .emo { font-size: 28px; }
 .slot.locked { border-style: solid; }
 .emptyslot { font-size: 24px; color: #9aa5b4; }
-.wicon { width: 90px; height: 45px; object-fit: contain; }
+.wicon { width: 90px; height: 54px; object-fit: contain; }
 
 .modal { position: fixed; inset: 0; background: rgba(20, 30, 45, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .picklist { display: flex; flex-direction: column; gap: 6px; }
 .pick { display: flex; align-items: center; gap: 12px; text-align: left; padding: 8px 12px; }
 .pick.on { box-shadow: inset 0 0 0 3px #3b82f6; }
 .pick .emo { font-size: 26px; width: 48px; text-align: center; }
-.pick .wicon { width: 60px; height: 30px; }
+.pick .wicon { width: 60px; height: 36px; }
 .pick b { display: block; }
 .pick small { font-weight: 500; color: #6b7280; }
 .pick em { font-style: normal; font-size: 11px; background: #e0e7ff; color: #4338ca; border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
@@ -170,3 +170,58 @@ ul.stats li { display: flex; justify-content: space-between; padding: 8px 4px; b
   .modes { grid-template-columns: 1fr 1fr; }
   .main .row { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- Dunkles Design (Shop) ---------- */
+.panel.dark {
+  background: rgba(16, 20, 29, 0.96);
+  color: #e6e9ef;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+.dark h2 { color: #fff; }
+.dark button { background: #232b3c; color: #e6e9ef; }
+.dark button:hover:not([disabled]) { background: #2e3850; }
+.dark button.primary { background: linear-gradient(180deg, #3d8bff, #2563eb); color: #fff; }
+.dark button.primary:hover:not([disabled]) { background: linear-gradient(180deg, #5a9cff, #2f6ff0); }
+.dark button[disabled] { background: #1d2331; color: #5d6779; opacity: 1; }
+.shophead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
+.shophead h2 { margin: 0; }
+.dark .pts { margin: 0; padding: 7px 16px; border-radius: 999px; background: rgba(255, 196, 61, 0.12); border: 1px solid rgba(255, 196, 61, 0.25); color: #ffd166; font-size: 16px; }
+.dark .tabs { display: inline-flex; gap: 4px; padding: 4px; background: #1a2130; border: 1px solid #252e40; border-radius: 14px; margin-bottom: 16px; }
+.dark .tabs button { background: transparent; color: #8e98aa; padding: 8px 14px; }
+.dark .tabs button:hover:not([disabled]) { background: #232b3c; color: #e6e9ef; }
+.dark .tabs button.on { background: #2b3651; color: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+.dark .cards { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.dark .card {
+  background: #1a2130; border: 1px solid #252e40; border-radius: 16px; padding: 0; overflow: hidden;
+  align-items: stretch; text-align: left; gap: 0; transition: transform 0.12s, border-color 0.12s;
+}
+.dark .card:hover { transform: translateY(-2px); border-color: #3a4766; }
+.dark .card .cimg {
+  height: 88px; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 60%, #2c3752 0%, #1a2130 72%);
+}
+.dark .card .cimg .emo { font-size: 38px; }
+.dark .card .cbody { padding: 10px 14px 4px; display: flex; flex-direction: column; gap: 4px; }
+.dark .card b { color: #fff; font-size: 15px; }
+.dark .card small { color: #8e98aa; min-height: 0; }
+.dark .card .cfoot { margin-top: auto; padding: 10px 14px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dark .card .cfoot button { width: auto; margin: 0; padding: 8px 16px; }
+.dark .price { color: #ffd166; font-weight: 800; }
+.dark .card.owned { border-color: rgba(74, 222, 128, 0.3); }
+.dark .tagok { margin: 0; color: #4ade80; font-weight: 800; }
+.dark .row button { background: #232b3c; }
+
+/* ---------- Einstellungen: Tastenbelegung ---------- */
+.dark .field label { color: #e6e9ef; }
+.dark .seg button.on { background: #2563eb; color: #fff; }
+.dark .hint { color: #8e98aa; }
+.dark h3 { color: #8e98aa; }
+.dark table.ctrl th, .dark table.ctrl td { border-bottom-color: #232b3c; }
+.dark table.ctrl th { color: #8e98aa; font-weight: 700; }
+table.keys td { padding: 4px 6px; }
+button.key { min-width: 112px; padding: 6px 10px; font-size: 13px; background: #232b3c; border: 1px solid #2e3850; }
+button.key.listening { background: #2563eb; color: #fff; border-color: #60a5fa; animation: pulse 1s infinite; }
+.padk { color: #8e98aa; font-size: 13px; }
+.dark button.danger { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
+@keyframes pulse { 50% { opacity: 0.65; } }

@@ -15,7 +15,6 @@
     7: { destr: true, hp: 50, color: '#8d7b68' }, // Erdwall (temporär)
   };
   const CH = { '#': 1, S: 2, W: 3, C: 4, L: 5, B: 6, E: 7 };
-  const FLOWER = ['#ff7eb6', '#ffe066', '#ffffff', '#b48cff', '#ff9f43'];
 
   function canvas(w, h) {
     const c = document.createElement('canvas');
@@ -38,10 +37,26 @@
         rect(ch, c0, r0, c1, r1) {
           for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) self.set(c, r, CH[ch]);
         },
+        clear(c0, r0, c1, r1) {
+          for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) self.set(c, r, 0);
+        },
+        ground(heights) {
+          heights.forEach((h, c) => { if (h != null) for (let r = h; r < ROWS; r++) self.set(c, r, 1); });
+        },
+        // Baum mit Stamm und runder Krone, steht auf der Oberkante "top"
+        tree(c, top, size) {
+          const trunkTop = top - 5;
+          for (let r = trunkTop; r < top; r++) self.set(c, r, 6);
+          const cr = trunkTop - 1;
+          for (let r = cr - size + 1; r <= cr; r++) {
+            const half = r === cr - size + 1 ? size - 2 : size - 1 + (r === cr ? 0 : 1);
+            for (let k = -half; k <= half; k++) self.set(c + k, r, 5);
+          }
+        },
       });
-      this.spawns = map.spawns.map(([c, r]) => this.dropPoint(c, r));
+      this.spawns = map.spawns ? map.spawns.map(([c, r]) => this.dropPoint(c, r)) : this.autoSpawns();
       this.clouds = [];
-      for (let i = 0; i < 7; i++) this.clouds.push({ x: U.rand(-100, SL.W), y: U.rand(40, 300), s: U.rand(0.6, 1.4), v: U.rand(8, 22) });
+      for (let i = 0; i < 4; i++) this.clouds.push({ x: U.rand(-100, SL.W), y: U.rand(40, 300), s: U.rand(0.6, 1.4), v: U.rand(8, 22) });
       this.bg = canvas(SL.W, SL.H);
       this.tileCanvas = canvas(SL.W, SL.H);
       this.renderBg();
@@ -62,6 +77,18 @@
       const c0 = Math.floor(l / T), c1 = Math.floor((r - 0.01) / T), r0 = Math.floor(t / T), r1 = Math.floor((b - 0.01) / T);
       for (let rr = r0; rr <= r1; rr++) for (let cc = c0; cc <= c1; cc++) if (this.get(cc, rr)) return false;
       return true;
+    }
+    // Startpunkte gleichmäßig über begehbare Spalten verteilen
+    autoSpawns() {
+      const cols = [];
+      for (let c = 1; c < COLS - 1; c++) {
+        for (let r = 2; r < ROWS; r++) {
+          if (this.get(c, r)) { if (!this.get(c, r - 1) && !this.get(c, r - 2) && !this.get(c - 1, r - 1) && !this.get(c + 1, r - 1)) cols.push({ x: c * T + T / 2, y: r * T }); break; }
+        }
+      }
+      const out = [];
+      for (let i = 0; i < 8; i++) out.push(cols[Math.round((i + 0.5) / 8 * (cols.length - 1))]);
+      return out;
     }
     dropPoint(c, r) {
       for (let rr = r; rr < ROWS; rr++) if (this.get(c, rr)) return { x: c * T + T / 2, y: rr * T };
@@ -222,166 +249,48 @@
 
     // ---------- Zeichnen ----------
     renderBg() {
-      const ctx = this.bg.getContext('2d');
-      const W = SL.W, H = SL.H;
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#7cc8f2');
-      g.addColorStop(0.6, '#bfe6fa');
-      g.addColorStop(1, '#e8f7ff');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-      // Sonne
-      const sg = ctx.createRadialGradient(1340, 130, 10, 1340, 130, 160);
-      sg.addColorStop(0, 'rgba(255,250,210,1)');
-      sg.addColorStop(0.25, 'rgba(255,240,170,0.9)');
-      sg.addColorStop(1, 'rgba(255,240,170,0)');
-      ctx.fillStyle = sg;
-      ctx.fillRect(1100, -100, 500, 460);
-      // Hügel
-      const hill = (base, amp, freq, phase, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, H);
-        for (let x = 0; x <= W; x += 16) {
-          const y = base + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 2.3 + phase * 1.7) * amp * 0.35;
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(W, H);
-        ctx.fill();
-      };
-      hill(560, 40, 0.004, 1.2, '#cdeccb');
-      hill(620, 50, 0.006, 0.3, '#b3e0ab');
-      // ferne Bäume
-      ctx.fillStyle = '#9fd394';
-      for (let i = 0; i < 26; i++) {
-        const x = U.hash(i, 3) * W, y = 600 + Math.sin(x * 0.006 + 0.3) * 50 + 10;
-        const r = 10 + U.hash(i, 7) * 14;
-        ctx.beginPath(); ctx.arc(x, y - r, r, 0, Math.PI * 2); ctx.fill();
-        ctx.fillRect(x - 2, y - r, 4, r + 8);
-      }
-      hill(700, 35, 0.005, 2.1, '#98d38c');
+      let seed = 0;
+      for (const ch of this.map.id) seed += ch.charCodeAt(0);
+      SL.Art.renderBg(this.bg.getContext('2d'), seed);
     }
 
     renderTiles() {
       const ctx = this.tileCanvas.getContext('2d');
       ctx.clearRect(0, 0, SL.W, SL.H);
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const t = this.grid[r * COLS + c];
-          if (t) this.drawTile(ctx, t, c * T, r * T, c, r, this.hp[r * COLS + c], !this.get(c, r - 1), this.life[r * COLS + c]);
+      // Durchgänge: Blöcke, weiche Innenecken, Blätter, Deko
+      for (const stage of [1, 0, 2, 3]) {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const i = r * COLS + c, t = this.grid[i];
+            const get = (dc, dr) => this.get(c + dc, r + dr);
+            if (stage === 0) { if (!t) SL.Art.fillets(ctx, c, r, get); }
+            else if (t) SL.Art.drawTile(ctx, t, c, r, this.hp[i], this.life[i], get, stage);
+          }
         }
       }
       this.dirty = false;
     }
 
-    drawTile(ctx, t, x, y, c, r, hp, topOpen, life) {
-      const h = U.hash(c, r);
-      switch (t) {
-        case 1: {
-          ctx.fillStyle = '#8b5a3c';
-          ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = '#7a4d33';
-          for (let i = 0; i < 3; i++) ctx.fillRect(x + U.hash(c * 3 + i, r) * 26 + 2, y + U.hash(c, r * 3 + i) * 24 + 6, 4, 3);
-          if (topOpen) {
-            ctx.fillStyle = '#6cc24a';
-            ctx.fillRect(x, y, T, 9);
-            ctx.fillStyle = '#86d65f';
-            ctx.fillRect(x, y, T, 3);
-            ctx.fillStyle = '#5aae3c';
-            for (let i = 0; i < 4; i++) {
-              const bx = x + 3 + i * 8 + U.hash(c + i, r) * 3;
-              ctx.beginPath(); ctx.moveTo(bx, y + 1); ctx.lineTo(bx + 2, y - 5 - U.hash(c, r + i) * 3); ctx.lineTo(bx + 4, y + 1); ctx.fill();
-            }
-            if (h > 0.72) {
-              const fx = x + 6 + U.hash(c, r + 9) * 20;
-              ctx.strokeStyle = '#4c9a34'; ctx.lineWidth = 2;
-              ctx.beginPath(); ctx.moveTo(fx, y); ctx.lineTo(fx, y - 9); ctx.stroke();
-              ctx.fillStyle = FLOWER[Math.floor(U.hash(r, c) * FLOWER.length)];
-              ctx.beginPath(); ctx.arc(fx, y - 11, 3.5, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = '#fff3a0';
-              ctx.beginPath(); ctx.arc(fx, y - 11, 1.4, 0, Math.PI * 2); ctx.fill();
-            }
-          }
-          break;
-        }
-        case 2:
-          ctx.fillStyle = '#7d8792'; ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = '#9aa3ad'; ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
-          ctx.fillStyle = '#b4bcc5'; ctx.fillRect(x + 2, y + 2, T - 4, 4);
-          if (topOpen) { ctx.fillStyle = '#7fcf5a'; ctx.fillRect(x, y, T, 4); }
-          break;
-        case 3:
-          ctx.fillStyle = '#a8723d'; ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = '#c58b4e'; ctx.fillRect(x, y + 2, T, 12); ctx.fillRect(x, y + 17, T, 12);
-          ctx.fillStyle = '#6e4a26';
-          ctx.fillRect(x + 4, y + 6, 2, 2); ctx.fillRect(x + T - 6, y + 6, 2, 2);
-          ctx.fillRect(x + 4, y + 22, 2, 2); ctx.fillRect(x + T - 6, y + 22, 2, 2);
-          break;
-        case 4:
-          ctx.fillStyle = '#9c6b35'; ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = '#d29b5a'; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
-          ctx.strokeStyle = '#9c6b35'; ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x + T - 4, y + T - 4); ctx.moveTo(x + T - 4, y + 4); ctx.lineTo(x + 4, y + T - 4); ctx.stroke();
-          break;
-        case 5:
-          ctx.fillStyle = '#4ea23c';
-          ctx.beginPath(); ctx.arc(x + T / 2, y + T / 2, T * 0.62, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#5fb84a';
-          ctx.beginPath(); ctx.arc(x + T / 2 - 4, y + T / 2 - 4, T * 0.45, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#74c95c';
-          ctx.beginPath(); ctx.arc(x + 9, y + 9, 5, 0, Math.PI * 2); ctx.fill();
-          break;
-        case 6:
-          ctx.fillStyle = '#8a5a35'; ctx.fillRect(x + 4, y, T - 8, T);
-          ctx.fillStyle = '#6f4527'; ctx.fillRect(x + 10, y, 3, T); ctx.fillRect(x + 19, y + 4, 2, T - 8);
-          break;
-        case 7: {
-          const a = life > 0 && life < 1.5 ? 0.5 + 0.5 * Math.sin(life * 20) : 1;
-          ctx.globalAlpha = a;
-          ctx.fillStyle = '#75655a'; ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = '#8d7b68'; ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
-          ctx.fillStyle = '#a69380'; ctx.fillRect(x + 6, y + 6, 6, 5); ctx.fillRect(x + 18, y + 16, 7, 6);
-          ctx.globalAlpha = 1;
-          break;
-        }
-      }
-      const info = TILES[t];
-      if (info.destr && hp < info.hp) {
-        const dmg = 1 - hp / info.hp;
-        ctx.strokeStyle = 'rgba(40,25,10,' + (0.35 + dmg * 0.5) + ')';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x + 16, y + 16);
-        ctx.lineTo(x + 6, y + 6 + h * 8);
-        ctx.moveTo(x + 16, y + 16);
-        ctx.lineTo(x + 28, y + 10);
-        if (dmg > 0.5) { ctx.moveTo(x + 16, y + 16); ctx.lineTo(x + 20, y + 29); ctx.moveTo(x + 16, y + 16); ctx.lineTo(x + 4, y + 24); }
-        ctx.stroke();
-      }
-    }
-
     drawBack(ctx) {
       ctx.drawImage(this.bg, 0, 0);
-      for (const cl of this.clouds) {
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        const s = cl.s;
-        ctx.beginPath();
-        ctx.arc(cl.x, cl.y, 26 * s, 0, Math.PI * 2);
-        ctx.arc(cl.x + 30 * s, cl.y - 12 * s, 32 * s, 0, Math.PI * 2);
-        ctx.arc(cl.x + 64 * s, cl.y, 24 * s, 0, Math.PI * 2);
-        ctx.arc(cl.x + 32 * s, cl.y + 8 * s, 26 * s, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      for (const cl of this.clouds) SL.Art.cloud(ctx, cl.x, cl.y, cl.s * 0.8);
     }
 
     drawTiles(ctx) {
       if (this.dirty) this.renderTiles();
       ctx.drawImage(this.tileCanvas, 0, 0);
       for (const ch of this.chunks) {
-        for (const tl of ch.tiles) {
-          const c = ch.c0 + tl.dc, r = ch.r0 + tl.dr;
-          this.drawTile(ctx, tl.type, c * T, r * T + ch.oy, c, r, tl.hp, false, tl.life);
+        const map = new Map();
+        for (const tl of ch.tiles) map.set(tl.dc + ',' + tl.dr, tl.type);
+        ctx.save();
+        ctx.translate(0, ch.oy);
+        for (let stage = 1; stage <= 2; stage++) {
+          for (const tl of ch.tiles) {
+            const get = (dc, dr) => map.get((tl.dc + dc) + ',' + (tl.dr + dr)) || 0;
+            SL.Art.drawTile(ctx, tl.type, ch.c0 + tl.dc, ch.r0 + tl.dr, tl.hp, tl.life, get, stage);
+          }
         }
+        ctx.restore();
       }
     }
   }

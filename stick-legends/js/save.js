@@ -18,7 +18,7 @@
         extras: ['helmet', null, null, null],
       },
       look: { color: '#3b82f6', hat: 'none', face: 'normal', cape: 'none' },
-      settings: { lang: 'de', diff: 1, bots: 1, map: 'random', rounds: 3, waveDiff: 1, waveMap: 'random' },
+      settings: { lang: 'de', diff: 1, bots: 1, map: 'random', rounds: 3, waveDiff: 1, waveMap: 'random', keys: SL.defaultKeys(), keyLabels: {} },
       stats: { kills: 0, wins: 0, bestWave: 0 },
       campaign: { level: 0 },
     };
@@ -35,6 +35,7 @@
     }
     // unbekannte Schlüssel in "owned" übernehmen
     if (src.owned && base.owned) for (const k in src.owned) base.owned[k] = !!src.owned[k];
+    if (src.keyLabels && base.keyLabels) for (const k in src.keyLabels) base.keyLabels[k] = String(src.keyLabels[k]).slice(0, 12);
     return base;
   }
 
@@ -95,6 +96,12 @@
       d.settings.waveDiff = SL.U.clamp(d.settings.waveDiff | 0, 0, 3);
       d.settings.bots = SL.U.clamp(d.settings.bots | 0, 1, 7);
       if (![3, 5, 7].includes(d.settings.rounds)) d.settings.rounds = 3;
+      if (!SL.MAPS.some((m) => m.id === d.settings.map)) d.settings.map = 'random';
+      if (!SL.MAPS.some((m) => m.id === d.settings.waveMap)) d.settings.waveMap = 'random';
+      for (const a in d.settings.keys) {
+        const k = d.settings.keys[a];
+        d.settings.keys[a] = [0, 1].map((i) => (typeof k[i] === 'string' && k[i].length < 24 ? k[i] : null));
+      }
     },
   };
 })();
